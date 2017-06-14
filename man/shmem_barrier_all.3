@@ -1,0 +1,85 @@
+.TH SHMEM_BARRIER_ALL 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shmem_barrier_all \-  Registers the arrival of a 
+PE
+at a barrier and suspends 
+PE
+execution until all other PEs arrive at the barrier and all local and remote memory updates are completed.
+.SH SYNOPSIS
+.nf
+.B C/C++: 
+void shmem_barrier_all(void);
+.B FORTRAN: 
+CALL SHMEM_BARRIER_ALL
+.fi
+.SH DESCRIPTION
+.SS Arguments
+
+None.
+
+
+
+
+.SS API Description
+The 
+.B shmem\_barrier\_all
+routine registers the arrival of a 
+PE
+at a barrier. Barriers are a fast mechanism for synchronizing all PEs at once. This routine causes a 
+PE
+to suspend execution until all PEs have called 
+.BR "shmem\_barrier\_all" .
+This routine must be used with PEs started by 
+.BR "shmem\_init" .
+
+Prior to synchronizing with other PEs, 
+.B shmem\_barrier\_all
+ensures completion of all previously issued memory stores and remote memory updates issued via OpenSHMEM
+AMOs
+and 
+RMA
+routine calls such as 
+.BR "shmem\_int\_add" ,
+.BR "shmem\_put32" ,
+.BR "shmem\_put\_nbi" ,
+and 
+.BR "shmem\_get\_nbi" .
+.SS Return Values
+None.
+.SS API Notes
+The 
+.B shmem\_barrier\_all
+routine can be used to portably ensure that memory access operations observe remote updates in the order enforced by initiator PEs.
+.SS Example
+
+The following 
+.B shmem\_barrier\_all
+example is for C11 programs:
+
+./
+.nf
+#include <stdio.h>
+#include <shmem.h>
+
+int main(void)
+{
+  static int x = 1010;
+
+  shmem_init();
+  int me = shmem_my_pe();
+  int npes = shmem_n_pes();
+
+  /* put to next  PE in a circular fashion */
+  shmem_p(&x, 4, (me + 1) % npes);
+
+  /* synchronize all PEs */
+  shmem_barrier_all();
+  printf("%d: x = %d\\n", me, x);
+  shmem_finalize();
+  return 0;
+}
+
+.fi
+
+
+

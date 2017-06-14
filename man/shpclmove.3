@@ -1,0 +1,61 @@
+.TH SHPCLMOVE 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shpclmove \-  Extends a symmetric heap block or copies the contents of the block into a larger block.
+.SH SYNOPSIS
+.nf
+.B FORTRAN: 
+POINTER (addr, A(1))
+INTEGER length, status, abort
+CALL SHPCLMOVE (addr, length, status, abort)
+.fi
+.SH DESCRIPTION
+.SS Arguments
+.BR "INOUT " - 
+.I addr
+- On entry, first word address of the block to change; on exit, the new address of the block if it was moved.
+
+.BR "IN " - 
+.I length
+- Requested new total length in words. One word is 
+32
+bits.
+
+.BR "OUT " - 
+.I status
+- Status is 
+0
+if the block was extended in place, 
+1
+if it was moved, and a negative integer for the type of error detected.
+
+.BR "IN " - 
+.I abort
+- Abort code. Nonzero requests abort on error; 
+0
+requests an error code.
+.SS API Description
+The 
+.B SHPCLMOVE
+routine either extends a symmetric heap block if the block is followed by a large enough free block or copies the contents of the existing block to a larger block and returns a status code indicating that the block was moved.  This routine also can reduce the size of a block if the new length is less than  the old length. All PEs in a program must call 
+.B SHPCLMOVE
+with the same value of
+.I addr
+to maintain symmetric heap consistency; if any PEs are missing, the program hangs.
+.SS Return Values
+.nf
+Error Code | Condition
+
+-1         | Length is not an integer greater than 0
+
+-2         | No more memory is available from the system (checked if the  
+	        request  cannot  be satisfied from the available blocks on the 
+	        symmetric heap).
+
+-3         | Address is outside the bounds of the symmetric heap.
+
+-4         | Block is already free.
+
+-5         | Address is not at the beginning of a block.
+.fi
+.SS API Notes
+None.

@@ -1,0 +1,47 @@
+.TH SHMEM_ATOMIC_FETCH_XOR 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shmem_atomic_fetch_xor \-   Atomically perform a fetching bitwise exclusive OR (XOR) operation on a  remote data object.
+.SH SYNOPSIS
+.nf
+.B C11: 
+TYPE shmem_atomic_fetch_xor(TYPE *dest, TYPE value, int pe);
+.B C/C++: 
+TYPE shmem_<TYPENAME>_atomic_fetch_xor(TYPE *dest, TYPE value, int pe);
+
+* TYPE is one of the extended AMO types
+.fi
+.SH DESCRIPTION
+.SS Arguments
+ 
+.BR "OUT " - 
+.I dest
+- A pointer to the remotely accessible data object to be updated.
+ 
+.BR "IN " - 
+.I value
+- The operand to the bitwise XOR operation.
+ 
+.BR "IN " - 
+.I pe
+- An integer value for the 
+PE
+on which 
+.I dest
+is to be updated.
+.SS API Description
+ 
+.B shmem\_atomic\_fetch\_xor
+atomically performs a fetching bitwise XOR on the remotely accessible data object pointed to by 
+.I dest
+at PE  
+.I pe
+with the operand 
+.IR "value" .
+.SS Return Values
+The value pointed to by 
+.I dest
+on PE 
+.I pe
+immediately before the operation is performed.
+.SS API Notes
+None.

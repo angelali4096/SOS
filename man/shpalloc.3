@@ -1,0 +1,66 @@
+.TH SHPALLOC 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shpalloc \-  Allocates a block of memory from the symmetric heap.
+.SH SYNOPSIS
+.nf
+.B FORTRAN: 
+POINTER (addr, A(1)) 
+INTEGER length, errcode, abort
+CALL SHPALLOC(addr, length, errcode, abort)
+.fi
+.SH DESCRIPTION
+.SS Arguments
+
+.BR "OUT " - 
+.I addr
+- First word address of the allocated block.
+
+.BR "IN " - 
+.I length
+- Number of words of memory requested. One word is 32 bits.
+
+.BR "OUT " - 
+.I errcode
+- Error code is 
+0
+if no error was detected; otherwise, it is a negative integer code for the type of error.
+
+.BR "IN " - 
+.I abort
+- Abort code; nonzero requests abort on error; 
+0
+requests an error code.
+.SS API Description
+
+.B SHPALLOC
+allocates a block of memory from the program's symmetric heap that is greater than or equal to the size requested. To maintain symmetric heap consistency, all PEs in an program must call 
+.B SHPALLOC
+with the same value of length; if any PEs are missing, the program will hang.  
+
+By using the Fortran 
+POINTER
+mechanism in the following manner, you can use array 
+.I A
+to refer to the block allocated by 
+.BR "SHPALLOC" :
+POINTER
+(
+.IR "addr" ,
+A())
+.SS Return Values
+.nf
+Error Code | Condition
+
+-1         | Length is not an integer greater than 0
+
+-2         | No more memory is available from the system (checked if the 
+             request cannot be satisfied from the available blocks on the
+	        symmetric heap).
+.fi
+.SS API Notes
+The total size of the symmetric heap is determined at job startup. One may adjust the size of the heap using the 
+SHMEM\_SYMMETRIC\_SIZE
+environment variable (if available).	
+.SS Note to implementors
+The symmetric heap allocation routines always return a pointer to corresponding symmetric objects across all PEs. The OpenSHMEM
+specification does not require that the virtual addresses are equal across all PEs. Nevertheless, the implementation must avoid costly address translation operations in the communication path, including order N (where N is the number of PEs) memory translation tables. In order to avoid address translations, the implementation may re-map the allocated block of memory based on agreed virtual address. Additionally, some operating systems provide an option to disable virtual address randomization, which enables predictable allocation of virtual memory addresses.

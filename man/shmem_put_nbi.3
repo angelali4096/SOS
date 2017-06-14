@@ -1,0 +1,113 @@
+.TH SHMEM_PUT_NBI 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shmem_put_nbi \-  The nonblocking put routines provide a method for copying data from a contiguous local data object to a data object on a specified PE. 
+.SH SYNOPSIS
+.nf
+.B C11: 
+void shmem_put_nbi(TYPE *dest, const TYPE *source, 
+      size_t nelems, int pe);
+.B C/C++: 
+void shmem_<TYPENAME>_put_nbi(TYPE *dest, const TYPE *source, 
+      size_t nelems, int pe);
+void shmem_put<SIZE>_nbi(void *dest, const void *source, 
+      size_t nelems, int pe);
+void shmem_putmem_nbi(void *dest, const void *source, 
+      size_t nelems, int pe);
+
+* TYPE is one of the standard RMA types
+* SIZE is one of 8, 16, 32, 128
+.B FORTRAN: 
+CALL SHMEM_CHARACTER_PUT_NBI(dest, source, nelems, pe)
+CALL SHMEM_COMPLEX_PUT_NBI(dest, source, nelems, pe)
+CALL SHMEM_DOUBLE_PUT_NBI(dest, source, nelems, pe)
+CALL SHMEM_INTEGER_PUT_NBI(dest, source, nelems, pe)
+CALL SHMEM_LOGICAL_PUT_NBI(dest, source, nelems, pe)
+CALL SHMEM_PUT4_NBI(dest, source, nelems, pe)
+CALL SHMEM_PUT8_NBI(dest, source, nelems, pe)
+CALL SHMEM_PUT32_NBI(dest, source, nelems, pe)
+CALL SHMEM_PUT64_NBI(dest, source, nelems, pe)
+CALL SHMEM_PUT128_NBI(dest, source, nelems, pe)
+CALL SHMEM_PUTMEM_NBI(dest, source, nelems, pe)
+CALL SHMEM_REAL_PUT_NBI(dest, source, nelems, pe)
+.fi
+.SH DESCRIPTION
+.SS Arguments
+
+.BR "OUT " - 
+.I dest
+- Data object to be updated on the remote PE. This data object must be remotely accessible.
+
+.BR "IN " - 
+.I source
+- Data object containing the data to be copied.
+
+.BR "IN " - 
+.I nelems
+- Number of elements in the 
+.I dest
+and 
+.I source
+arrays. 
+.I nelems
+must be of type size\_t for C. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+
+.BR "IN " - 
+.I pe
+- PE number of the remote PE. 
+.I pe
+must be of type integer. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+.SS API Description
+The routines return after posting the operation. The operation is considered complete after a subsequent call to 
+.BR "shmem\_quiet" .
+At the completion of 
+.BR "shmem\_quiet" ,
+the data has been copied into the 
+.I dest
+array on the destination 
+PE. The delivery of data words into the data object on the destination PE may occur in any order. Furthermore, two successive put routines may deliver data out of order unless a call to 
+.B shmem\_fence
+is introduced between the two calls. 
+
+The 
+.I dest
+and 
+.I source
+data objects must conform to typing constraints, which are as follows:
+.nf
+Routine          | Data type of dest and source
+
+shmem\_putmem\_nbi | Fortran: Any noncharacter type. 
+                   C: Any data type. nelems is scaled in bytes.
+
+shmem\_put4\_nbi,  | Any noncharacter type that has a storage size  
+shmem\_put32\_nbi    equal to 32 bits.
+
+shmem\_put8\_nbi   | C: Any noncharacter type that has a storage size 
+                   equal to 8 bits.
+                   Fortran: Any noncharacter type that has a storage 
+                   size equal to 64 bits.
+
+shmem\_put64\_nbi  | Any noncharacter type that has a storage size equal 
+                   to 64 bits.
+
+shmem\_put128\_nbi | Any noncharacter type that has a storage size equal to 
+                   128 bits.
+
+SHMEM\_CHARACTER\_PUT\_NBI | Elements of type character. nelems is the 
+                          number of characters to transfer. The actual 
+                          character lengths of the source and dest 
+                          variables are ignored. 
+
+SHMEM\_COMPLEX\_PUT\_NBI   | Elements of type complex of default size.
+
+SHMEM\_DOUBLE\_PUT\_NBI    | Elements of type double precision. 
+
+SHMEM\_INTEGER\_PUT\_NBI   | Elements of type integer.
+
+SHMEM\_LOGICAL\_PUT\_NBI   | Elements of type logical.
+
+SHMEM\_REAL\_PUT\_NBI      | Elements of type real.
+.SS Return Values
+None.
+.SS API Notes
+None.

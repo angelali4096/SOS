@@ -1,0 +1,36 @@
+.TH SHMEM_MY_PE 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shmem_my_pe \-  Returns the number of the calling 
+PE.
+.SH SYNOPSIS
+.nf
+.B C/C++: 
+int shmem_my_pe(void);
+.B FORTRAN: 
+INTEGER SHMEM_MY_PE, ME
+.br
+ME = SHMEM_MY_PE()
+.fi
+.SH DESCRIPTION
+.SS Arguments
+ 
+None.
+
+
+
+
+.SS API Description
+This routine returns the PE number of the calling PE. It accepts no arguments. The result is an integer between 0 and npes - 1, where npes is the total number of PEs executing the current program.
+.SS Return Values
+Integer - Between 0 and npes - 1
+
+.SS API Notes
+Each PE has a unique number or identifier. As of OpenSHMEM Specification 1.2 the use of 
+.B \_my\_pe
+has been deprecated. Although OpenSHMEM libraries are required to support the call, users are encouraged to use 
+.B shmem\_my\_pe
+instead. The behavior and signature of the routine 
+.B shmem\_my\_pe
+remains unchanged from the deprecated 
+.B \_my\_pe
+version.

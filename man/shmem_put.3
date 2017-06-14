@@ -1,0 +1,149 @@
+.TH SHMEM_PUT 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shmem_put \-  The  put routines  provide  a method for copying data from a contiguous local data object to a data object on a specified 
+PE
+.
+.SH SYNOPSIS
+.nf
+.B C11: 
+void shmem_put(TYPE *dest, const TYPE *source, size_t nelems, int pe);
+.B C/C++: 
+void shmem_<TYPENAME>_put(TYPE *dest, const TYPE *source, 
+      size_t nelems, int pe);
+void shmem_put<SIZE>(void *dest, const void *source, 
+      size_t nelems, int pe);
+void shmem_putmem(void *dest, const void *source, size_t nelems, int pe);
+
+* TYPE is one of the standard RMA types
+* SIZE is one of 8, 16, 32, 128
+.B FORTRAN: 
+CALL SHMEM_CHARACTER_PUT(dest, source, nelems, pe)
+CALL SHMEM_COMPLEX_PUT(dest, source, nelems, pe)
+CALL SHMEM_DOUBLE_PUT(dest, source, nelems, pe)
+CALL SHMEM_INTEGER_PUT(dest, source, nelems, pe)
+CALL SHMEM_LOGICAL_PUT(dest, source, nelems, pe)
+CALL SHMEM_PUT4(dest, source, nelems, pe)
+CALL SHMEM_PUT8(dest, source, nelems, pe)
+CALL SHMEM_PUT32(dest, source, nelems, pe)
+CALL SHMEM_PUT64(dest, source, nelems, pe)
+CALL SHMEM_PUT128(dest, source, nelems, pe)
+CALL SHMEM_PUTMEM(dest, source, nelems, pe)
+CALL SHMEM_REAL_PUT(dest, source, nelems, pe)
+.fi
+.SH DESCRIPTION
+.SS Arguments
+
+.BR "IN " - 
+.I dest
+- Data object to be updated on the remote 
+PE. This data object must be remotely accessible.
+
+.BR "OUT " - 
+.I source
+- Data object containing the data to be copied.
+
+.BR "IN " - 
+.I nelems
+- Number of elements in the 
+.I dest
+and 
+.I source
+arrays.
+.I nelems
+must be of type size\_t
+for C. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+
+.BR "IN " - 
+.I pe
+- PE number of the remote PE.
+.I pe
+must be of type integer. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+.SS API Description
+The routines return after the data has been copied out of the 
+.I source
+array on the local 
+PE.  The delivery of data words into the data object on the destination 
+PE may occur in any order. Furthermore, two successive put routines may deliver data out of order unless a call to 
+.B shmem\_fence
+is introduced between the two calls. 
+
+The 
+.I dest
+and 
+.I source
+data objects must conform to certain typing constraints, which are as follows:
+
+.nf
+Routine      | Data type of dest and source
+
+shmem\_putmem | Fortran: Any noncharacter type. 
+               C: Any data type. nelems is scaled in bytes.
+
+shmem\_put4,  | Any noncharacter type that has a storage size equal to 
+shmem\_put32    32 bits.
+
+shmem\_put8   | C: Any noncharacter type that has a storage size equal 
+               to 8 bits.
+               Fortran: Any noncharacter type that has a storage size 
+               equal to 64 bits.
+
+shmem\_put64  | Any noncharacter type that has a storage size equal to 
+               64 bits.
+
+shmem\_put128 | Any noncharacter type that has a storage size equal to 
+               128 bits.
+
+SHMEM\_CHARACTER\_PUT | Elements of type character. nelems is  the 
+                      number of characters to transfer. The actual 
+                      character lengths of the source and dest 
+                      variables are ignored. 
+
+SHMEM\_COMPLEX\_PUT   | Elements of type complex of default size.
+
+SHMEM\_DOUBLE\_PUT    | Elements of type double precision. 
+
+SHMEM\_INTEGER\_PUT   | Elements of type integer.
+
+SHMEM\_LOGICAL\_PUT   | Elements of type logical.
+
+SHMEM\_REAL\_PUT      | Elements of type real.
+.fi
+.SS Return Values
+None.
+.SS API Notes
+If you are using Fortran, data types must be of default size.  For example, a real variable must be declared as REAL, REAL*4, or REAL(KIND=KIND(1.0)). The Fortran API routine 
+.B SHMEM\_PUT
+has been deprecated, and either 
+.B SHMEM\_PUT8
+or 
+.B SHMEM\_PUT64
+should be used in its place.
+.SS Example
+
+The following 
+.B shmem\_put
+example is for C11 programs:
+
+./
+.nf
+#include <stdio.h>
+#include <shmem.h>
+
+int main(void)
+{
+  long source[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+  static long dest[10];
+  shmem_init();
+  int me = shmem_my_pe();
+  if (me == 0) /* put 10 words into dest on PE 1 */
+     shmem_put(dest, source, 10, 1);
+  shmem_barrier_all(); /* sync sender and receiver */
+  printf("dest[0] on PE %d is %ld\\n", me, dest[0]);
+  shmem_finalize();
+  return 0;
+}
+
+.fi
+
+
+

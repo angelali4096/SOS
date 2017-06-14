@@ -1,0 +1,114 @@
+.TH SHMEM_GET_NBI 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shmem_get_nbi \-  The nonblocking get routines provide a method for copying data from a contiguous remote data object on the specified PEto the local data object. 
+.SH SYNOPSIS
+.nf
+.B C11: 
+void shmem_get_nbi(TYPE *dest, const TYPE *source, 
+									size_t nelems, int pe);
+.B C/C++: 
+void shmem_<TYPENAME>_get_nbi(TYPE *dest, const TYPE *source, 
+      size_t nelems, int pe);
+void shmem_get<SIZE>_nbi(void *dest, const void *source, 
+      size_t  nelems, int pe);
+void shmem_getmem_nbi(void *dest, const void *source, 
+      size_t nelems, int pe);
+
+* TYPE is one of the standard RMA types
+* SIZE is one of 8, 16, 32, 128
+.B FORTRAN: 
+INTEGER nelems, pe
+CALL SHMEM_CHARACTER_GET_NBI(dest, source, nelems, pe)
+CALL SHMEM_COMPLEX_GET_NBI(dest, source, nelems, pe)
+CALL SHMEM_DOUBLE_GET_NBI(dest, source, nelems, pe)
+CALL SHMEM_GET4_NBI(dest, source, nelems, pe)
+CALL SHMEM_GET8_NBI(dest, source, nelems, pe)
+CALL SHMEM_GET32_NBI(dest, source, nelems, pe)
+CALL SHMEM_GET64_NBI(dest, source, nelems, pe)
+CALL SHMEM_GET128_NBI(dest, source, nelems, pe)
+CALL SHMEM_GETMEM_NBI(dest, source, nelems, pe)
+CALL SHMEM_INTEGER_GET_NBI(dest, source, nelems, pe)
+CALL SHMEM_LOGICAL_GET_NBI(dest, source, nelems, pe)
+CALL SHMEM_REAL_GET_NBI(dest, source, nelems, pe)
+.fi
+.SH DESCRIPTION
+.SS Arguments
+
+.BR "OUT " - 
+.I dest
+- Local data object to be updated.
+
+.BR "IN " - 
+.I source
+- Data object on the PE identified by 
+.I pe
+that contains the data to be copied. This data object must be remotely  accessible.
+
+.BR "IN " - 
+.I nelems
+- Number of elements in the 
+.I dest
+and 
+.I source
+arrays. 
+nelems
+must be of type size\_t for C. If you are  using Fortran, it must be a constant, variable, or array element of default integer type.
+
+.BR "IN " - 
+.I pe
+- PE number of the remote PE.  
+.I pe
+must be of type integer. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+.SS API Description
+The get routines provide a method for copying a contiguous symmetric data object from a different PE to a contiguous data object on the local PE. The routines return after posting the operation. The operation is considered complete after a subsequent call to 
+.BR "shmem\_quiet" .
+At the completion of 
+.BR "shmem\_quiet" ,
+the data has been delivered to the 
+.I dest
+array on the local 
+PE. 
+
+The 
+.I dest
+and 
+.I source
+data objects must conform to typing constraints, which are as follows:
+.nf
+Routine          | Data type of dest and source
+
+shmem\_getmem\_nbi | Fortran: Any noncharacter type. 
+                   C: Any data type. nelems is scaled in bytes.
+
+shmem\_get4\_nbi,  | Any noncharacter type that has a storage size 
+shmem\_get32\_nbi    equal to 32 bits.
+
+shmem\_get8\_nbi   | C: Any noncharacter type that has a storage size 
+                   equal to 8 bits.
+                   Fortran: Any noncharacter type that has a storage
+                   size equal to 64 bits.
+
+shmem\_get64\_nbi  | Any noncharacter type that has a storage size 
+                   equal to 64 bits.
+
+shmem\_get128\_nbi | Any noncharacter type that has a storage size 
+                   equal to 128 bits.
+
+SHMEM\_CHARACTER\_GET\_NBI | Elements of type character. nelems
+                          is the number  of characters to transfer. 
+                          The actual character lengths of the source
+                          and dest variables are ignored.
+
+SHMEM\_COMPLEX\_GET\_NBI   | Elements of type complex of default size.
+
+SHMEM\_DOUBLE\_GET\_NBI    | Fortran: Elements of type double precision.
+
+SHMEM\_INTEGER\_GET\_NBI   | Elements of type integer.
+
+SHMEM\_LOGICAL\_GET\_NBI   | Elements of type logical.
+
+SHMEM\_REAL\_GET\_NBI      | Elements of type real.
+.SS Return Values
+None.
+.SS API Notes
+If you are using Fortran, data types must be of default size. For example, a real variable must be declared as REAL, REAL*4, or REAL(KIND=KIND(1.0)).

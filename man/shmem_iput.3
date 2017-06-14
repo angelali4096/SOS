@@ -1,0 +1,162 @@
+.TH SHMEM_IPUT 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+shmem_iput \-  Copies strided data to a specified PE.
+.SH SYNOPSIS
+.nf
+.B C11: 
+void shmem_iput(TYPE *dest, const TYPE *source, ptrdiff_t dst, 
+      ptrdiff_t sst, size_t nelems, int pe);
+.B C/C++: 
+void shmem_<TYPENAME>_iput(TYPE *dest, const TYPE *source, 
+      ptrdiff_t dst, ptrdiff_t sst, size_t nelems, int pe);
+void shmem_iput<SIZE>(void *dest, const void *source, ptrdiff_t dst, 
+      ptrdiff_t sst, size_t nelems, int pe);
+
+* TYPE is one of the standard RMA types
+* SIZE is one of 8, 16, 32, 128
+.B FORTRAN: 
+INTEGER dst, sst, nelems, pe
+CALL SHMEM_COMPLEX_IPUT(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_DOUBLE_IPUT(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_INTEGER_IPUT(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_IPUT4(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_IPUT8(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_IPUT32(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_IPUT64(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_IPUT128(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_LOGICAL_IPUT(dest, source, dst, sst, nelems, pe)
+CALL SHMEM_REAL_IPUT(dest, source, dst, sst, nelems, pe)
+.fi
+.SH DESCRIPTION
+.SS Arguments
+
+.BR "OUT " - 
+.I dest
+- Array to be updated on the remote PE. This data object must be remotely accessible.
+
+.BR "IN " - 
+.I source
+- Array containing the data to be copied.
+
+.BR "IN " - 
+.I dst
+- The stride between consecutive elements of the
+.I dest
+array.  The stride is scaled by the element size of the 
+.I dest
+array. A value of 1 indicates contiguous data.  
+.I dst
+must be of type ptrdiff\_t.  If you are using Fortran, it must be a default integer value.
+
+.BR "IN " - 
+.I sst
+- The stride between consecutive elements of the 
+.I source
+array.  The stride is scaled by the element size of the 
+.I source
+array.  A  value of 1 indicates contiguous data.  
+.I sst
+must be  of type ptrdiff\_t.  If you are using Fortran, it must be a  default integer value.
+
+.BR "IN " - 
+.I nelems
+- Number of elements in the 
+.I dest
+and 
+.I source
+arrays.  
+.I nelems
+must be of type size\_t for C. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+
+.BR "IN " - 
+.I pe
+- PE number of the remote PE.  
+.I pe
+must be  of type integer. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+.SS API Description
+The 
+.B iput
+routines provide a method for copying strided data elements (specified by 
+.I sst
+) of an array from a 
+.I source 
+array on the local PE to locations specified by stride 
+.I dst
+on a 
+.I dest
+array on specified remote 
+PE. Both strides, 
+.I dst
+and 
+.IR "sst" ,
+must be greater than or equal to 1. The routines return when the data has been copied out of the 
+.I source
+array on the local PE but not necessarily before the data has been delivered to the remote data object.
+
+The 
+.I dest
+and 
+.I source
+data objects must conform to typing constraints, which are as follows:
+.nf
+Routine       | Data type of dest and source
+
+shmem\_iput4,  | Any noncharacter type that has a storage size equal 
+shmem\_iput32    to 32 bits.
+
+shmem\_iput8   | C: Any noncharacter type that  has a storage size equal 
+                to 8 bits.
+                Fortran: Any noncharacter type that has a storage size 
+                equal to 64 bits.
+
+shmem\_iput64  | Any noncharacter type that  has a storage size equal to 
+                64 bits.
+
+shmem\_iput128 | Any noncharacter type that has a  storage size equal to 
+               128 bits.
+
+SHMEM\_COMPLEX\_IPUT | Elements of type complex of default size.
+
+SHMEM\_DOUBLE\_IPUT  | Elements of type double precision.
+
+SHMEM\_INTEGER\_IPUT | Elements of type integer.
+
+SHMEM\_LOGICAL\_IPUT | Elements of type logical.
+
+SHMEM\_REAL\_IPUT    | Elements of type real.
+.SS Return Values
+None.
+.SS API Notes
+If you are using Fortran, data types must be of default size. For example, a real variable must be declared as REAL, REAL*4 or REAL(KIND=KIND(1.0)).
+.SS Example
+
+Consider the following 
+.B shmem\_iput
+example for C11 programs.
+
+./
+.nf
+#include <stdio.h>
+#include <shmem.h>
+
+int main(void)
+{
+  short source[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+  static short dest[10];
+  shmem_init();
+  int me = shmem_my_pe();
+  if (me == 0) /* put 5 elements into dest on PE 1 */
+     shmem_iput(dest, source, 1, 2, 5, 1);
+  shmem_barrier_all(); /* sync sender and receiver */
+  if (me == 1) {
+     printf("dest on PE %d is %hd %hd %hd %hd %hd\\n", me,
+        dest[0], dest[1], dest[2], dest[3], dest[4]);
+  }
+  shmem_finalize();
+  return 0;
+}
+
+.fi
+
+
+

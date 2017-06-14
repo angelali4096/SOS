@@ -1,0 +1,71 @@
+.TH START_PES 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.SH NAME
+start_pes \-  Called at the beginning of an OpenSHMEM program to initialize the execution environment. This routine is deprecated and is provided for backwards compatibility. Implementations must include it, and the routine should function properly and may notify the user about deprecation of its use.
+.SH SYNOPSIS
+.nf
+.B C/C++: 
+void start_pes(int npes);
+.B FORTRAN: 
+CALL START_PES(npes)
+
+.fi
+.SH DESCRIPTION
+.SS Arguments
+.BR "IN " - 
+.I npes
+- Unused, Should be set to 0.
+.SS API Description
+The 
+.B start\_pes
+routine initializes the OpenSHMEM execution environment. An OpenSHMEM program must call 
+.B start\_pes
+before calling any other OpenSHMEM routine.
+.SS Return Values
+None.
+.SS API Notes
+If any other OpenSHMEM call occurs before 
+.BR "start\_pes" ,
+the behavior is undefined. Although it is recommended to set 
+.I npes
+to 
+0
+for 
+.BR "start\_pes" ,
+this is not mandated. The value is ignored. Calling 
+.B start\_pes
+more than once has no subsequent effect. 
+
+As of OpenSHMEM Specification 1.2 the use of 
+.B start\_pes
+has been deprecated. Although OpenSHMEM libraries are required to support the call, program users are encouraged to use 
+.B shmem\_init
+instead.
+.SS Example
+
+This is a simple program that calls 
+.BR "start\_pes" :
+
+./
+.nf
+PROGRAM PUT
+INCLUDE "shmem.fh"
+INTEGER TARG, SRC, RECEIVER, BAR
+COMMON /T/ TARG
+PARAMETER (RECEIVER=1)
+CALL START_PES(0)
+
+IF (SHMEM_MY_PE() .EQ. 0) THEN
+   SRC = 33
+   CALL SHMEM_INTEGER_PUT(TARG, SRC, 1, RECEIVER)
+ENDIF
+
+CALL SHMEM_BARRIER_ALL           ! SYNCHRONIZES SENDER AND RECEIVER
+
+IF (SHMEM_MY_PE() .EQ. RECEIVER) THEN
+   PRINT*,'PE ', SHMEM_MY_PE(),' TARG=',TARG,' (expect 33)'
+ENDIF
+END
+.fi
+
+
+
