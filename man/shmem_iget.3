@@ -1,127 +1,266 @@
-.TH SHMEM_IGET 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.TH SHMEM_IGET 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+./ sectionStart
 .SH NAME
-shmem_iget \-  Copies strided data from a specified PE.
-.SH SYNOPSIS
-.nf
-.B C11: 
-void shmem_iget(TYPE *dest, const TYPE *source, ptrdiff_t dst, 
-      ptrdiff_t sst, size_t nelems, int pe);
-.B C/C++: 
-void shmem_<TYPENAME>_iget(TYPE *dest, const TYPE *source, 
-			ptrdiff_t dst, ptrdiff_t sst, size_t nelems, int pe);
-void shmem_iget<SIZE>(void *dest, const void *source, ptrdiff_t dst, 
-			ptrdiff_t sst, size_t  nelems, int pe);
+shmem_iget \-  Copies strided data from a specified PE. 
+./ sectionEnd
+./ sectionStart
+.SH   SYNOPSIS
+./ sectionEnd
+./ sectionStart
+.SS C11:
 
-* TYPE is one of the standard RMA types
-* SIZE is one of 8, 16, 32, 128
-.B FORTRAN: 
-INTEGER dst, sst, nelems, pe
-CALL SHMEM_COMPLEX_IGET(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_DOUBLE_IGET(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_IGET4(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_IGET8(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_IGET32(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_IGET64(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_IGET128(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_INTEGER_IGET(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_LOGICAL_IGET(dest, source, dst, sst, nelems, pe)
-CALL SHMEM_REAL_IGET(dest, source, dst, sst, nelems, pe)
+
+
+.B void
+.B shmem_iget(TYPE
+.IB "*dest" ,
+.B const
+.B TYPE
+.IB "*source" ,
+.B ptrdiff_t
+.IB "dst" ,
+.B ptrdiff_t
+.IB "sst" ,
+.B size_t
+.IB "nelems" ,
+.B int
+.I pe
+.B );
+./ sectionEnd
+
+
+* For details on TYPE and TYPENAME, please refer to Table 1 below.
+./ sectionStart
+.SS C/C++:
+
+
+
+.B void
+.B shmem_<TYPENAME>_iget(TYPE
+.IB "*dest" ,
+.B const
+.B TYPE
+.IB "*source" ,
+.B ptrdiff_t
+.IB "dst" ,
+.B ptrdiff_t
+.IB "sst" ,
+.B size_t
+.IB "nelems" ,
+.B int
+.I pe
+.B );
+./ sectionEnd
+
+
+* For details on TYPE and TYPENAME, please refer to Table 1 below.
+./ sectionStart
+
+
+
+.B void
+.B shmem_iget<SIZE>(void
+.IB "*dest" ,
+.B const
+.B void
+.IB "*source" ,
+.B ptrdiff_t
+.IB "dst" ,
+.B ptrdiff_t
+.IB "sst" ,
+.B size_t
+.IB "nelems" ,
+.B int
+.I pe
+.B );
+./ sectionEnd
+
+
+
+where SIZE is one of 8, 16, 32, 64, 128.
+
+
+./ sectionStart
+.SS Fortran:
+.nf
+.BR "INTEGER " "dst, sst, nelems, pe"
+.BR "CALL " "SHMEM_COMPLEX_IGET(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_DOUBLE_IGET(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_IGET4(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_IGET8(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_IGET32(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_IGET64(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_IGET128(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_INTEGER_IGET(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_LOGICAL_IGET(dest, source, dst, sst, nelems, pe)"
+.BR "CALL " "SHMEM_REAL_IGET(dest, source, dst, sst, nelems, pe)"
 .fi
+./ sectionEnd
+./ sectionStart
 .SH DESCRIPTION
 .SS Arguments
 
-.BR "OUT " - 
+
+.BR "OUT " -
 .I dest
 - Array to be updated on the local PE. 
 
-.BR "IN " - 
+
+.BR "IN " -
 .I source
 - Array containing the data to be copied on the remote PE.
 
-.BR "IN " - 
+
+.BR "IN " -
 .I dst
 - The stride between consecutive elements of the 
-.I dest
+.I "dest"
 array. The stride is scaled by the element size of the 
-.I dest
-array. A value of 1indicates contiguous data. 
+.I "dest"
+array.
+A value of 1 indicates contiguous data. 
 .I dst
-must be of type ptrdiff\_t. If you are calling from Fortran, it must be a default integer value.
+must be of
+type ptrdiff\_t. When using Fortran, it must
+be a default integer value.
 
-.BR "IN " - 
+
+.BR "IN " -
 .I sst
-- The stride between consecutive elements of the 
-.I source
+- The stride between consecutive elements of the
+.I "source"
 array. The stride is scaled by the element size of the 
-.I source
-array. A value of 1indicates contiguous data.  
+.I "source"
+array. A value of 1 indicates contiguous data. 
 .I sst
-must be  of type ptrdiff\_t. If you are calling from Fortran, it must be a default integer value.
+must be
+of type ptrdiff\_t. When using Fortran, it must
+be a default integer value.
 
-.BR "IN " - 
+
+.BR "IN " -
 .I nelems
 - Number of elements in the 
-.I dest
+.I "dest"
 and 
-.I source
-arrays.  
+.I "source"
+arrays. 
 .I nelems
-must be of type size\_t for C. If you are  using Fortran, it must be a constant, variable, or array element of default integer type.
+must be of type 
+.I size\_t
+for C. When
+using Fortran, it must be a constant, variable, or array element of
+default integer type.
 
-.BR "IN " - 
+
+.BR "IN " -
 .I pe
-- PE number of the remote PE.  
+- PE number of the remote PE. 
 .I pe
-must be of type integer. If you are using Fortran, it must be a constant, variable, or array element of default integer type.
+must be
+of type integer. When using Fortran, it must be a constant,
+variable, or array element of default integer type.
+./ sectionEnd
+./ sectionStart
 .SS API Description
 The 
 .B iget
-routines provide a method for copying strided data elements from a symmetric array from a specified remote PE to strided locations on a local array. The routines return when the data has been copied into the local 
+routines provide a method for copying strided data elements from
+a symmetric array from a specified remote PE to strided locations on a
+local array. The routines return when the data has been copied into the local
 .I dest
 array.
-
+./ sectionEnd
+./ sectionStart
 The 
 .I dest
 and 
 .I source
 data objects must conform to typing constraints, which are as follows:
-.nf
-Routine       | Data type of dest and source
+.TP 20
+Routine
+Data type of 
+.I dest
+and 
+.I source
+./ sectionEnd
 
-shmem\_iget4,  | Any noncharacter type that has a storage size equal 
-shmem\_iget32    to 32 bits
+./ sectionStart
+.TP 20
+shmem\_iget4, shmem\_iget32
+Any noncharacter type that has a storage size equal to 32 bits.
+./ sectionEnd
 
-shmem\_iget8   | C: Any noncharacter type that has a storage size equal 
-                to 8 bits.
-                Fortran: Any noncharacter type that has a storage size 
-                equal to 64 bits.
+./ sectionStart
+.TP 20
+shmem\_iget8
+C: Any noncharacter type that has a storage size equal to 8 bits.
+./ sectionEnd
 
-shmem\_iget64  | Any noncharacter type that has a storage size equal to 
-                64 bits.
+./ sectionStart
+Fortran: Any noncharacter type that has a storage size equal to 64 bits.
+./ sectionEnd
 
-shmem\_iget128 | Any noncharacter type that has a storage size equal to 
-                128 bits.
+./ sectionStart
+.TP 20
+shmem\_iget64
+Any noncharacter type that has a storage size equal to 64 bits.
+./ sectionEnd
 
-SHMEM\_COMPLEX\_IGET | Elements of type complex of default size.
+./ sectionStart
+.TP 20
+shmem\_iget128
+Any noncharacter type that has a storage size equal to 128 bits.
+./ sectionEnd
 
-SHMEM\_DOUBLE\_IGET  | Fortran: Elements of type double precision.
+./ sectionStart
+.TP 20
+SHMEM\_COMPLEX\_IGET
+Elements of type complex of default size.
+./ sectionEnd
 
-SHMEM\_INTEGER\_IGET | Elements of type integer.
+./ sectionStart
+.TP 20
+SHMEM\_DOUBLE\_IGET
+Fortran: Elements of type double precision.
+./ sectionEnd
 
-SHMEM\_LOGICAL\_IGET | Elements of type logical.
+./ sectionStart
+.TP 20
+SHMEM\_INTEGER\_IGET
+Elements of type integer.
+./ sectionEnd
 
-SHMEM\_REAL\_IGET    | Elements of type real.
+./ sectionStart
+.TP 20
+SHMEM\_LOGICAL\_IGET
+Elements of type logical.
+./ sectionEnd
+
+./ sectionStart
+.TP 20
+SHMEM\_REAL\_IGET
+Elements of type real.
+./ sectionEnd
+./ sectionStart
 .SS Return Values
 None.
+./ sectionEnd
+./ sectionStart
 .SS API Notes
-If you are using Fortran, data types must be of default size. For example, a real variable must be declared as REAL, REAL*4, or REAL(KIND=KIND(1.0)). 
-.SS Example
+When using Fortran, data types must be of default size. For example, a
+real variable must be declared as REAL, REAL*4, or
+REAL(KIND=KIND(1.0)). 
+./ sectionEnd
+./ sectionStart
+.SS Examples
+
+
 
 The following example uses 
 .B shmem\_logical\_iget
 in a Fortran program.
- 
-./
+
 .nf
 PROGRAM STRIDELOGICAL
 INCLUDE "shmem.fh"
@@ -140,3 +279,81 @@ CALL SHMEM_BARRIER_ALL
 
 
 
+
+
+.SS Table 1: 
+.TP 20
+.B TYPE
+.B TYPENAME
+.TP
+float
+float
+.TP
+double
+double
+.TP
+long double
+longdouble
+.TP
+char
+char
+.TP
+signed char
+schar
+.TP
+short
+short
+.TP
+int
+int
+.TP
+long
+long
+.TP
+long long
+longlong
+.TP
+unsigned char
+uchar
+.TP
+unsigned short
+ushort
+.TP
+unsigned int
+uint
+.TP
+unsigned long
+ulong
+.TP
+unsigned long long
+ulonglong
+.TP
+int8_t
+int8
+.TP
+int16_t
+int16
+.TP
+int32_t
+int32
+.TP
+int64_t
+int64
+.TP
+uint8_t
+uint8
+.TP
+uint16_t
+uint16
+.TP
+uint32_t
+uint32
+.TP
+uint64_t
+uint64
+.TP
+size_t
+size
+.TP
+ptrdiff_t
+ptrdiff

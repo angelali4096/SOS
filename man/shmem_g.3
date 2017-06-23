@@ -1,41 +1,81 @@
-.TH SHMEM_G 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.TH SHMEM_G 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+./ sectionStart
 .SH NAME
-shmem_g \-  Copies one data item from a remote PE
+shmem_g \-  Copies one data item from a remote PE 
+./ sectionEnd
+./ sectionStart
+.SH   SYNOPSIS
+./ sectionEnd
+./ sectionStart
+.SS C11:
 
-.SH SYNOPSIS
-.nf
-.B C11: 
-TYPE shmem_g(const TYPE *addr, int pe);
-.B C/C++: 
-TYPE shmem_<TYPENAME>_g(const TYPE *addr, int pe);
 
-* TYPE is one of the standard RMA types
-.fi
+
+.B TYPE
+.B shmem_g(const
+.B TYPE
+.IB "*addr" ,
+.B int
+.I pe
+.B );
+./ sectionEnd
+
+
+* For details on TYPE and TYPENAME, please refer to Table 1 below.
+./ sectionStart
+.SS C/C++:
+
+
+
+.B TYPE
+.B shmem_<TYPENAME>_g(const
+.B TYPE
+.IB "*addr" ,
+.B int
+.I pe
+.B );
+./ sectionEnd
+
+
+* For details on TYPE and TYPENAME, please refer to Table 1 below.
+./ sectionStart
 .SH DESCRIPTION
 .SS Arguments
 
-.BR "IN " - 
+
+.BR "IN " -
 .I addr
 - The remotely accessible array element or scalar data object.
 
-.BR "IN " - 
+
+.BR "IN " -
 .I pe
 - The number of the remote PE on which 
 .I addr
 resides.
+./ sectionEnd
+./ sectionStart
 .SS API Description
-These routines provide a very low latency get capability for single elements  of most basic types. 
+These routines provide a very low latency get capability for single elements
+of most basic types. 
+./ sectionEnd
+./ sectionStart
 .SS Return Values
 Returns a single element of type specified in the synopsis.
+./ sectionEnd
+./ sectionStart
 .SS API Notes
 None.
-.SS Example
+./ sectionEnd
+./ sectionStart
+.SS Examples
+
+
 
 The following 
 .B shmem\_g
 example is for C11 programs:
 
-./
 .nf
 #include <stdio.h>
 #include <shmem.h>
@@ -53,8 +93,83 @@ int main(void)
   shmem_finalize();
   return 0;
 }
-
 .fi
 
 
 
+.SS Table 1: 
+.TP 20
+.B TYPE
+.B TYPENAME
+.TP
+float
+float
+.TP
+double
+double
+.TP
+long double
+longdouble
+.TP
+char
+char
+.TP
+signed char
+schar
+.TP
+short
+short
+.TP
+int
+int
+.TP
+long
+long
+.TP
+long long
+longlong
+.TP
+unsigned char
+uchar
+.TP
+unsigned short
+ushort
+.TP
+unsigned int
+uint
+.TP
+unsigned long
+ulong
+.TP
+unsigned long long
+ulonglong
+.TP
+int8_t
+int8
+.TP
+int16_t
+int16
+.TP
+int32_t
+int32
+.TP
+int64_t
+int64
+.TP
+uint8_t
+uint8
+.TP
+uint16_t
+uint16
+.TP
+uint32_t
+uint32
+.TP
+uint64_t
+uint64
+.TP
+size_t
+size
+.TP
+ptrdiff_t
+ptrdiff

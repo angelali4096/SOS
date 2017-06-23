@@ -1,60 +1,82 @@
-.TH SHMEM_N_PES 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.TH SHMEM_N_PES 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+./ sectionStart
 .SH NAME
-shmem_n_pes \-  Returns the number of PEs running in a program.
-.SH SYNOPSIS
+shmem_n_pes \-  Returns the number of PEs running in a program. 
+./ sectionEnd
+./ sectionStart
+.SH   SYNOPSIS
+./ sectionEnd
+./ sectionStart
+.SS C/C++:
+
+
+
+.B int
+.B shmem_n_pes(void);
+./ sectionEnd
+./ sectionStart
+.SS Fortran:
 .nf
-.B C/C++: 
-int shmem_n_pes(void);
-.B FORTRAN: 
-INTEGER SHMEM_N_PES, N_PES
-.br
+.BR "INTEGER " "SHMEM_N_PES, N_PES"
 N_PES = SHMEM_N_PES()
 .fi
+./ sectionEnd
+./ sectionStart
 .SH DESCRIPTION
 .SS Arguments
- 
-None.
-
-
-
-
+.B None.
+./ sectionEnd
+./ sectionStart
 .SS API Description
 The routine returns the number of PEs running in the program.
+./ sectionEnd
+./ sectionStart
 .SS Return Values
-Integer -  Number of PEs running in the OpenSHMEM program.
+Integer - Number of PEs running in the OpenSHMEM program.
+./ sectionEnd
+./ sectionStart
 .SS API Notes
 As of OpenSHMEM Specification 1.2 the use of 
 .B \_num\_pes
-has been deprecated. Although OpenSHMEM libraries are required to support the call, users are encouraged to use 
+has been
+deprecated. Although OpenSHMEM libraries are required to support the call,
+users are encouraged to use 
 .B shmem\_n\_pes
-instead. The behavior and signature  of the routine 
+instead. The behavior and
+signature of the routine 
 .B shmem\_n\_pes
-remains unchanged from the deprecated 
+remains unchanged from the
+deprecated 
 .B \_num\_pes
 version.
-.SS Example 
-The following
+./ sectionEnd
+./ sectionStart
+.SS Examples
+
+
+
+The following 
 .B shmem\_my\_pe
 and 
 .B shmem\_n\_pes
-example is for C/C++ programs:
- 
-./
+example is for  C/C++ programs:
+
 .nf
 #include <stdio.h>
 #include <shmem.h>
 
 int main(void)
 {
-   shmem_init();
-   int me = shmem_my_pe();
-   int npes = shmem_n_pes();
-   printf("I am #%d of %d PEs executing this program\\n", me, npes);
-   shmem_finalize();
-   return 0;
+  shmem_init();
+  int me = shmem_my_pe();
+  int npes = shmem_n_pes();
+  printf("I am #%d of %d PEs executing this program\\n", me, npes);
+  shmem_finalize();
+  return 0;
 }
-
 .fi
 
- 
+
+
+
 

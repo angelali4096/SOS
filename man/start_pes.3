@@ -1,54 +1,88 @@
-.TH START_PES 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.TH START_PES 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+./ sectionStart
 .SH NAME
-start_pes \-  Called at the beginning of an OpenSHMEM program to initialize the execution environment. This routine is deprecated and is provided for backwards compatibility. Implementations must include it, and the routine should function properly and may notify the user about deprecation of its use.
-.SH SYNOPSIS
-.nf
-.B C/C++: 
-void start_pes(int npes);
-.B FORTRAN: 
-CALL START_PES(npes)
+start_pes \-   Called at the beginning of an OpenSHMEM program to initialize the execution environment. This routine is deprecated and is provided for backwards compatibility. Implementations must include it, and the routine should function properly and may notify the user about deprecation of its use. 
+./ sectionEnd
+./ sectionStart
+.SH   SYNOPSIS
+./ sectionEnd
+./ sectionStart
+.SS C/C++:
 
+
+
+.B void
+.B start_pes(int
+.I npes
+.B );
+./ sectionEnd
+./ sectionStart
+.SS Fortran:
+.nf
+.BR "CALL " "START_PES(npes)"
 .fi
+./ sectionEnd
+./ sectionStart
 .SH DESCRIPTION
 .SS Arguments
-.BR "IN " - 
-.I npes
-- Unused, Should be set to 0.
+
+
+.BR "npes " -
+.I Unused
+-  Should be set to 0.
+./ sectionEnd
+./ sectionStart
 .SS API Description
+
 The 
 .B start\_pes
-routine initializes the OpenSHMEM execution environment. An OpenSHMEM program must call 
+routine initializes the OpenSHMEM execution
+environment. An OpenSHMEM program must call 
 .B start\_pes
-before calling any other OpenSHMEM routine.
+before
+calling any other OpenSHMEM routine.
+./ sectionEnd
+./ sectionStart
 .SS Return Values
 None.
+./ sectionEnd
+./ sectionStart
 .SS API Notes
 If any other OpenSHMEM call occurs before 
-.BR "start\_pes" ,
-the behavior is undefined. Although it is recommended to set 
-.I npes
-to 
-0
-for 
-.BR "start\_pes" ,
-this is not mandated. The value is ignored. Calling 
 .B start\_pes
-more than once has no subsequent effect. 
+, the
+behavior is undefined. Although it is recommended to set 
+.I npes
+to
+0 for 
+.B start\_pes
+, this is not mandated. The value is ignored.
+Calling 
+.B start\_pes
+more than once has no subsequent
+effect.
 
 As of OpenSHMEM Specification 1.2 the use of 
 .B start\_pes
-has been deprecated. Although OpenSHMEM libraries are required to support the call, program users are encouraged to use 
+has
+been deprecated. Although OpenSHMEM libraries are required to support the
+call, program users are encouraged to use 
 .B shmem\_init
 instead.
-.SS Example
+./ sectionEnd
+./ sectionStart
+.SS Examples
+
+
 
 This is a simple program that calls 
-.BR "start\_pes" :
+.B start\_pes
+:
 
-./
 .nf
 PROGRAM PUT
 INCLUDE "shmem.fh"
+
 INTEGER TARG, SRC, RECEIVER, BAR
 COMMON /T/ TARG
 PARAMETER (RECEIVER=1)
@@ -66,6 +100,8 @@ IF (SHMEM_MY_PE() .EQ. RECEIVER) THEN
 ENDIF
 END
 .fi
+
+
 
 
 

@@ -1,96 +1,161 @@
-.TH SHMEM_ATOMIC_SWAP 1 2017-06-06 "Intel Corp." "OpenSHEMEM Library Documentation"
+.TH SHMEM_ATOMIC_SWAP 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+./ sectionStart
 .SH NAME
-shmem_atomic_swap \-  Performs an atomic swap to a remote data object.
-.SH SYNOPSIS
-.nf
-.B C11: 
-TYPE shmem_atomic_swap(TYPE *dest, TYPE value, int pe);
-.B C/C++: 
-TYPE shmem_<TYPENAME>_atomic_swap(TYPE *dest, TYPE value, int pe);
+shmem_atomic_swap \-  Performs an atomic swap to a remote data object. 
+./ sectionEnd
+./ sectionStart
+.SH   SYNOPSIS
+./ sectionEnd
+./ sectionStart
+.SS C11:
 
-* TYPE is one of the extended AMO types
-.B FORTRAN: 
-INTEGER SHMEM_SWAP, value, pe
-ires = SHMEM_SWAP(dest, value, pe) 
-INTEGER*4 SHMEM_INT4_SWAP, value_i4, ires_i4
-ires_i4 = SHMEM_INT4_SWAP(dest, value_i4, pe) 
-INTEGER*8 SHMEM_INT8_SWAP, value_i8, ires_i8
+
+
+.B TYPE
+.B shmem_atomic_swap(TYPE
+.IB "*dest" ,
+.B TYPE
+.IB "value" ,
+.B int
+.I pe
+.B );
+./ sectionEnd
+
+
+* TYPE is one of the extended AMO types. For details, please refer to Table 3 below.
+./ sectionStart
+.SS C/C++:
+
+
+
+.B TYPE
+.B shmem_<TYPENAME>_atomic_swap(TYPE
+.IB "*dest" ,
+.B TYPE
+.IB "value" ,
+.B int
+.I pe
+.B );
+./ sectionEnd
+
+
+* TYPE is one of the extended AMO types. For details, please refer to Table 3 below.
+./ sectionStart
+.SS Fortran:
+.nf
+.BR "INTEGER " "SHMEM_SWAP, value, pe"
+ires = SHMEM_SWAP(dest, value, pe)
+.BR "INTEGER*4 " "SHMEM_INT4_SWAP, value_i4, ires_i4"
+ires_i4 = SHMEM_INT4_SWAP(dest, value_i4, pe)
+.BR "INTEGER*8 " "SHMEM_INT8_SWAP, value_i8, ires_i8"
 ires_i8 = SHMEM_INT8_SWAP(dest, value_i8, pe)
-REAL*4 SHMEM_REAL4_SWAP, value_r4, res_r4
+.BR "REAL*4 " "SHMEM_REAL4_SWAP, value_r4, res_r4"
 res_r4 = SHMEM_REAL4_SWAP(dest, value_r4, pe)
-REAL*8 SHMEM_REAL8_SWAP, value_r8, res_r8
+.BR "REAL*8 " "SHMEM_REAL8_SWAP, value_r8, res_r8"
 res_r8 = SHMEM_REAL8_SWAP(dest, value_r8, pe)
 .fi
+./ sectionEnd
+./ sectionStart
 .SH DESCRIPTION
 .SS Arguments
 
-.BR "OUT " - 
+
+.BR "OUT " -
 .I dest
-- The remotely accessible integer data object to be  updated on the remote 
-PE.	If you are using C/C++, the type of  
-.I dest
+- The remotely accessible integer data object to be
+updated on the remote PE. When using  C/C++, the type of
+.I "dest"
 should match that implied in the SYNOPSIS section.
 
-.BR "IN " - 
+
+.BR "IN " -
 .I value
-- The value to be atomically written to the remote  
+- The value to be atomically written to the remote
 PE. 
 .I value
 is the same type as 
 .IR "dest" .
 
-.BR "IN " - 
-.I pe
-- An integer that indicates the 
-PE
-number on which  
-.I dest
-is to be updated. If you are using Fortran, it must be a default integer value.
-.SS API Description
 
+.BR "IN " -
+.I pe
+-  An integer that indicates the PE number on which
+.I "dest"
+is to be updated. When using Fortran, it must be a default
+integer value.
+./ sectionEnd
+./ sectionStart
+.SS API Description
 .B shmem\_atomic\_swap
-performs an atomic swap operation. It writes 
+performs an atomic swap operation.
+It writes 
 .I value
 into 
-.I dest
-on 
-PE
-and returns the previous contents of 
-.I dest
+.I "dest"
+on PE and returns the previous
+contents of 
+.I "dest"
 as an atomic operation.
-
-If you are using Fortran, 
+./ sectionEnd
+./ sectionStart
+When using Fortran, 
 .I dest
-must be of the following type:
-.nf
-Routine          | Data type of dest and source
-
-SHMEM\_SWAP       | Integer of default kind
-
-SHMEM\_INT4\_SWAP  | 4-byte integer
-
-SHMEM\_INT8\_SWAP  | 8-byte integer
-
-SHMEM\_REAL4\_SWAP | 4-byte real
-
-SHMEM\_REAL8\_SWAP | 8-byte real
-
+must be of the following type: 
+.TP 20
+Routine
+Data type of 
+.I dest
+and 
+.I source
+./ sectionEnd
+./ sectionStart
+.TP 20
+SHMEM\_SWAP
+Integer of default kind
+./ sectionEnd
+./ sectionStart
+.TP 20
+SHMEM\_INT4\_SWAP
+4-byte integer
+./ sectionEnd
+./ sectionStart
+.TP 20
+SHMEM\_INT8\_SWAP
+8-byte integer
+./ sectionEnd
+./ sectionStart
+.TP 20
+SHMEM\_REAL4\_SWAP
+4-byte real
+./ sectionEnd
+./ sectionStart
+.TP 20
+SHMEM\_REAL8\_SWAP
+8-byte real
+./ sectionEnd
+./ sectionStart
 .SS Return Values
 The content that had been at the 
-.I dest
-address on the remote 
-PE
+.I "dest"
+address on the remote PE
 prior to the swap is returned.
+./ sectionEnd
+./ sectionStart
 .SS API Notes
-As of OpenSHMEM 1.4, 
+As of OpenSHMEM[1.4], 
 .B shmem\_swap
-has been deprecated. Its behavior and call signature are identical to the replacement interface, 
+has been deprecated.
+Its behavior and call signature are identical to the replacement
+interface, 
 .BR "shmem\_atomic\_swap" .
-.SS Example
+./ sectionEnd
+./ sectionStart
+.SS Examples
+
+
 
 The example below swaps values between odd numbered PEs and their right (modulo) neighbor and outputs the result of swap.
 
-./
 .nf
 #include <stdio.h>
 #include <shmem.h>
@@ -105,15 +170,61 @@ int main(void)
   shmem_barrier_all();
   long new_val = me;
   if (me & 1) {
-     long swapped_val = shmem_atomic_swap(&dest, new_val, 
-                                              (me + 1) % npes);
+     long swapped_val = shmem_atomic_swap(&dest, new_val, (me + 1) % npes);
      printf("%d: dest = %ld, swapped = %ld\\n", me, dest, swapped_val);
   }
   shmem_finalize();
   return 0;
 }
-
 .fi
 
 
 
+
+
+.SS Table 3: 
+.TP 20
+.B TYPE
+.B TYPENAME
+.TP
+float
+float
+.TP
+double
+double
+.TP
+int
+int
+.TP
+long
+long
+.TP
+long long
+longlong
+.TP
+unsigned int
+uint
+.TP
+unsigned long
+ulong
+.TP
+unsigned long long
+ulonglong
+.TP
+int32_t
+int32
+.TP
+int64_t
+int64
+.TP
+uint32_t
+uint32
+.TP
+uint64_t
+uint64
+.TP
+size_t
+size
+.TP
+ptrdiff_t
+ptrdiff
