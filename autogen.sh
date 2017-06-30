@@ -2,10 +2,18 @@
 
 test -d ./config || mkdir ./config
 
+FILES=./man/*.1
+printf "dist_man1_MANS = " > ./man/Makefile.am
+for f in $FILES
+do
+  printf "%s " $(basename $f) >> ./man/Makefile.am
+done
 
-printf "dist_man1_MANS = "> ./man/Makefile.am
-find ./man/*.1 -printf "%f " >> ./man/Makefile.am
-printf "\ndist_man3_MANS = ">> ./man/Makefile.am
-find ./man/*.3 -printf "%f " >> ./man/Makefile.am
+FILES=./man/*.3
+printf "\ndist_man3_MANS = " >> ./man/Makefile.am
+for f in $FILES
+do
+  printf "%s " $(basename $f) >> ./man/Makefile.am
+done
 
 autoreconf -vif
