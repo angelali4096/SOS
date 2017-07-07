@@ -1,15 +1,18 @@
-.TH SHMEM_ATOMIC_FETCH_INC 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_ATOMIC_FETCH_INC 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_atomic_fetch_inc \-  Performs an atomic fetch-and-increment operation on a remote data object. 
+shmem_atomic_fetch_inc \- 
+Performs an atomic fetch-and-increment operation on a remote data object.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C11:
-
-
 
 .B TYPE
 .B shmem_atomic_fetch_inc(TYPE
@@ -17,14 +20,16 @@ shmem_atomic_fetch_inc \-  Performs an atomic fetch-and-increment operation on a
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the standard AMO types. For details, please refer to Table 2 below.
+where TYPE is one of the standard AMO types specified by
+Table 2.
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B TYPE
 .B shmem_<TYPENAME>_atomic_fetch_inc(TYPE
@@ -32,27 +37,38 @@ shmem_atomic_fetch_inc \-  Performs an atomic fetch-and-increment operation on a
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the standard AMO types. For details, please refer to Table 2 below.
+where TYPE is one of the standard AMO types and has a corresponding
+TYPENAME specified by Table 2.
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "pe"
 .BR "INTEGER*4 " "SHMEM_INT4_FINC, ires_i4"
 ires_i4 = SHMEM_INT4_FINC(dest, pe)
 .BR "INTEGER*8 " "SHMEM_INT8_FINC, ires_i8"
 ires_i8 = SHMEM_INT8_FINC(dest, pe)
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "IN " -
 .I dest
 - The remotely accessible integer data object to be updated
@@ -66,13 +82,16 @@ SYNOPSIS section.
 .I pe
 - An integer that indicates the PE number on which
 .I "dest"
-is to be updated. When using Fortran, it must be a default
+is to be updated. If you are using Fortran, it must be a default
 integer value.
-
-
 ./ sectionEnd
+
+
+
 ./ sectionStart
+
 .SS API Description
+
 These routines perform a fetch-and-increment operation. The 
 .I "dest"
 on
@@ -82,45 +101,70 @@ is increased by one and the routine returns the previous
 contents of 
 .I "dest"
 as an atomic operation.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-When using Fortran, 
+
+If you are using Fortran, 
 .I dest
-must be of the following type: 
-.TP 20
+must be of the following type:
+
+.TP 25
 Routine
 Data type of 
 .I dest
 and 
 .I source
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_INT4\_FINC
 4-byte integer
 ./ sectionEnd
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_INT8\_FINC
 8-byte integer
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 The contents that had been at the 
 .I "dest"
 address on the remote PE prior to
 the increment. The data type of the return value is the same as the 
 .IR "dest" .
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 As of OpenSHMEM[1.4], 
 .B shmem\_finc
 has been deprecated.
 Its behavior and call signature are identical to the replacement
 interface, 
 .BR "shmem\_atomic\_fetch\_inc" .
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 
@@ -128,7 +172,8 @@ interface,
 
 The following 
 .B shmem\_atomic\_fetch\_inc
-example is for C[11] programs:
+example is for
+C[11] programs:
 
 .nf
 #include <stdio.h>
@@ -153,10 +198,11 @@ int main(void)
 
 
 
-.SS Table 2: 
-.TP 20
-.B TYPE
-.B TYPENAME
+.SS Table 2:
+Standard AMO Types and Names
+.TP 25
+.B \TYPE
+.B \TYPENAME
 .TP
 int
 int
@@ -166,30 +212,3 @@ long
 .TP
 long long
 longlong
-.TP
-unsigned int
-uint
-.TP
-unsigned long
-ulong
-.TP
-unsigned long long
-ulonglong
-.TP
-int32_t
-int32
-.TP
-int64_t
-int64
-.TP
-uint32_t
-uint32
-.TP
-uint64_t
-uint64
-.TP
-size_t
-size
-.TP
-ptrdiff_t
-ptrdiff

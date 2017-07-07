@@ -1,15 +1,18 @@
-.TH SHMEM_WAIT 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_WAIT 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_wait \-  Wait for a variable on the local PE to change. 
+shmem_wait \- 
+Wait for a variable on the local PE to change.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C11:
-
-
 
 .B void
 .B shmem_wait_until(TYPE
@@ -19,10 +22,14 @@ shmem_wait \-  Wait for a variable on the local PE to change.
 .B TYPE
 .I cmp_value
 .B );
+
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-
-
 
 .B void
 .B shmem_wait(TYPE
@@ -30,14 +37,16 @@ shmem_wait \-  Wait for a variable on the local PE to change.
 .B TYPE
 .I cmp_value
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the point-to-point synchronization types. For details, please refer to Table 5 below.
+where TYPE is one of the point-to-point synchronization types specified by
+Table 5.
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B shmem_<TYPENAME>_wait_until(TYPE
@@ -47,10 +56,14 @@ shmem_wait \-  Wait for a variable on the local PE to change.
 .B TYPE
 .I cmp_value
 .B );
+
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-
-
 
 .B void
 .B shmem_<TYPENAME>_wait(TYPE
@@ -58,32 +71,42 @@ shmem_wait \-  Wait for a variable on the local PE to change.
 .B TYPE
 .I cmp_value
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the point-to-point synchronization types. For details, please refer to Table 5 below.
+where TYPE is one of the point-to-point synchronization types and has a
+corresponding TYPENAME specified by Table 5.
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "CALL " "SHMEM_INT4_WAIT(ivar, cmp_value)"
 .BR "CALL " "SHMEM_INT4_WAIT_UNTIL(ivar, cmp, cmp_value)"
 .BR "CALL " "SHMEM_INT8_WAIT(ivar, cmp_value)"
 .BR "CALL " "SHMEM_INT8_WAIT_UNTIL(ivar, cmp, cmp_value)"
 .BR "CALL " "SHMEM_WAIT(ivar, cmp_value)"
 .BR "CALL " "SHMEM_WAIT_UNTIL(ivar, cmp, cmp_value)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "OUT " -
 .I ivar
 - A remotely accessible integer variable that is being updated
-by another PE. When using  C/C++, the type of 
+by another PE. If you are using  C/C++, the type of 
 .I ivar
 should
 match that implied in the SYNOPSIS section. 
@@ -95,26 +118,27 @@ match that implied in the SYNOPSIS section.
 .I ivar
 with
 .IR "cmp\_value" .
-. When using Fortran, it must be of default kind.
-When using  C/C++, it must be of type \CTYPE{shmem\_cmp\_t}.
+. If you are using Fortran, it must be of default kind.
+If you are using  C/C++, it must be of type \CTYPE{shmem\_cmp\_t}.
 
 
 .BR "IN " -
 .I cmp\_value
 - 
 .I cmp\_value
-must be of type integer. When
+must be of type integer. If you are
 using  C/C++, the type of 
 .I cmp\_value
 should match that implied in the
-SYNOPSIS section. When using Fortran, cmp\_value must be an integer of
+SYNOPSIS section. If you are using Fortran, cmp\_value must be an integer of
 the same size and kind as 
 .IR "ivar" .
 .
-
-
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
 
 .B shmem\_wait
@@ -159,36 +183,60 @@ argument compared with the
 using the comparison operator, 
 .IR "cmp" .
 . 
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
-When using Fortran, 
+
+If you are using Fortran, 
 .I ivar
-must be a specific sized integer type according to the routine being called, as follows: 
-.TP 20
+must be a specific sized integer type
+according to the routine being called, as follows:
+
+.TP 25
 Routine
 Data type
 ./ sectionEnd
+
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_wait, shmem\_wait\_until
 default INTEGER
 ./ sectionEnd
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_int4\_wait, shmem\_int4\_wait\_until
 INTEGER*4
 ./ sectionEnd
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_int8\_wait, shmem\_int8\_wait\_until
 INTEGER*8
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 As of OpenSHMEM[1.4], the 
 .B shmem\_wait
 routine is deprecated,
@@ -199,9 +247,14 @@ is equivalent to
 where 
 .I cmp
 is SHMEM\_CMP\_NE.
+
 ./ sectionEnd
+
+
 ./ sectionStart
-.SS Note to implementors
+
+.SS API Notes
+
 Implementations must ensure that 
 .B shmem\_wait
 and
@@ -215,7 +268,12 @@ must not cause
 or 
 .B shmem\_wait\_until
 to return.
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
 .SS Examples
 
@@ -236,7 +294,8 @@ CALL SHMEM_INT8_WAIT(IVAR, INTEGER*8(100))
 
 The following call to 
 .B SHMEM\_INT8\_WAIT\_UNTIL
-is equivalent to the call to 
+is equivalent to the
+call to 
 .B SHMEM\_INT8\_WAIT
 in example 1:
 
@@ -251,7 +310,8 @@ CALL SHMEM_INT8_WAIT_UNTIL(IVAR, SHMEM_CMP_NE, INTEGER*8(100))
 
 The following  C/C++ call waits until the value in 
 .I ivar
-is set to be less than zero by a transfer from a remote PE:
+is set to
+be less than zero by a transfer from a remote PE:
 
 .nf
 #include <stdio.h>#include <shmem.h>
@@ -285,10 +345,11 @@ END
 
 
 
-.SS Table 5: 
-.TP 20
-.B TYPE
-.B TYPENAME
+.SS Table 5:
+Point-to-Point Synchronization Types and Names
+.TP 25
+.B \TYPE
+.B \TYPENAME
 .TP
 short
 short
@@ -302,11 +363,11 @@ long
 long long
 longlong
 .TP
-unsigned int
-uint
-.TP
 unsigned short
 ushort
+.TP
+unsigned int
+uint
 .TP
 unsigned long
 ulong
@@ -314,20 +375,20 @@ ulong
 unsigned long long
 ulonglong
 .TP
-int32_t
+int32\_t
 int32
 .TP
-int64_t
+int64\_t
 int64
 .TP
-uint32_t
+uint32\_t
 uint32
 .TP
-uint64_t
+uint64\_t
 uint64
 .TP
-size_t
+size\_t
 size
 .TP
-ptrdiff_t
+ptrdiff\_t
 ptrdiff

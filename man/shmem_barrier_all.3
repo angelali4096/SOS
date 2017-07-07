@@ -1,35 +1,54 @@
-.TH SHMEM_BARRIER_ALL 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_BARRIER_ALL 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_barrier_all \-  Registers the arrival of a PE at a barrier and suspends PE execution until all other PEs arrive at the barrier and all local and remote memory updates are completed. 
+shmem_barrier_all \- 
+Registers the arrival of a PE at a barrier and suspends PE execution
+until all other PEs arrive at the barrier and all local and remote memory
+updates are completed.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
 
-
-
 .B void
-.B shmem_barrier_all(void);
+.B shmem_barrier_all(void)
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "CALL " "SHMEM_BARRIER_ALL"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-.B None. 
-
-
+.B None.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
 
 The 
@@ -56,19 +75,33 @@ as
 .B shmem\_put\_nbi
 , and 
 .BR "shmem\_get\_nbi" .
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 The 
 .B shmem\_barrier\_all
 routine can be used to
 portably ensure that memory access operations observe remote updates in the order
 enforced by initiator PEs.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 

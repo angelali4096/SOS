@@ -1,18 +1,22 @@
-.TH SHMEM_BARRIER 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_BARRIER 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_barrier \-  Performs all operations described in the 
+shmem_barrier \- 
+Performs all operations described in the 
 .B shmem\_barrier\_all
-interface but with respect to a subset of PEs defined by the 
+interface
+but with respect to a subset of PEs defined by the 
 .IR "Active set" .
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B shmem_barrier(int
@@ -24,29 +28,41 @@ interface but with respect to a subset of PEs defined by the
 .B long
 .I *pSync
 .B );
+
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "PE_start, logPE_stride, PE_size"
 .BR "INTEGER " "pSync(SHMEM_BARRIER_SYNC_SIZE)"
 .BR "CALL " "SHMEM_BARRIER(PE_start, logPE_stride, PE_size, pSync)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "IN " -
 .I PE\_start
 - The lowest PE number of the 
 .I "Active set"
 of PEs.
 .I PE\_start
-must be of type integer. When using Fortran, it must be
+must be of type integer. If you are using Fortran, it must be
 a default integer value.
 
 
@@ -57,7 +73,7 @@ PE numbers in the
 .IR "Active set" .
 .I logPE\_stride
 must be of type integer.
-When using Fortran, it must be a default integer value.
+If you are using Fortran, it must be a default integer value.
 
 
 .BR "IN " -
@@ -65,7 +81,7 @@ When using Fortran, it must be a default integer value.
 - The number of PEs in the 
 .IR "Active set" .
 .I PE\_size
-must be of type integer. When using Fortran, it must be a default
+must be of type integer. If you are using Fortran, it must be a default
 integer value.
 
 
@@ -77,18 +93,20 @@ must
 be of type long and size SHMEM\_BARRIER\_SYNC\_SIZE. In Fortran,
 .I pSync
 must be of type integer and size SHMEM\_BARRIER\_SYNC\_SIZE.
-When using Fortran, it must be a default integer type. Every element
+If you are using Fortran, it must be a default integer type. Every element
 of this array must be initialized to SHMEM\_SYNC\_VALUE before any of
 the PEs in the 
 .I "Active set"
 enter 
 .B shmem\_barrier
 the first time.
-
-
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 .B shmem\_barrier
 is a collective synchronization routine over an
 .IR "Active set" .
@@ -142,13 +160,23 @@ The same
 array may be reused on consecutive calls to
 .B shmem\_barrier
 if the same active PE set is used.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 If the 
 .I pSync
 array is initialized at run time, be sure to use some type of
@@ -176,7 +204,11 @@ The
 routine can be used to
 portably ensure that memory access operations observe remote updates in the order
 enforced by initiator PEs.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 

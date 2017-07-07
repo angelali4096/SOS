@@ -1,37 +1,63 @@
-.TH START_PES 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH START_PES 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-start_pes \-   Called at the beginning of an OpenSHMEM program to initialize the execution environment. This routine is deprecated and is provided for backwards compatibility. Implementations must include it, and the routine should function properly and may notify the user about deprecation of its use. 
+start_pes \-  
+Called at the beginning of an OpenSHMEM program to initialize the execution
+environment. This routine is deprecated and is provided for backwards
+compatibility. Implementations must include it, and the routine should
+function properly and may notify the user about deprecation of its use.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
+
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B start_pes(int
 .I npes
 .B );
+
+
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "CALL " "START_PES(npes)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
 .BR "npes " -
 .I Unused
 -  Should be set to 0.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
 
 The 
@@ -41,13 +67,23 @@ environment. An OpenSHMEM program must call
 .B start\_pes
 before
 calling any other OpenSHMEM routine.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 If any other OpenSHMEM call occurs before 
 .B start\_pes
 , the
@@ -69,7 +105,12 @@ been deprecated. Although OpenSHMEM libraries are required to support the
 call, program users are encouraged to use 
 .B shmem\_init
 instead.
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
 .SS Examples
 

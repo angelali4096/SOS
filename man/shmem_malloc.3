@@ -1,15 +1,18 @@
-.TH SHMEM_MALLOC 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_MALLOC 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_malloc \-  Symmetric heap memory management routines. 
+shmem_malloc \- 
+Symmetric heap memory management routines.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B *shmem_malloc(size_t
@@ -40,17 +43,24 @@ shmem_malloc \-  Symmetric heap memory management routines.
 .B size_t
 .I size
 .B );
+
+
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
 .BR "IN " -
 .I size
 - The size, in bytes, of a block to be
 allocated from the symmetric heap. This argument is of type 
 .I size\_t
+
 
 
 .BR "IN " -
@@ -63,8 +73,13 @@ allocated from the symmetric heap. This argument is of type
 - Byte alignment of the block allocated from the
 symmetric heap.
 ./ sectionEnd
+
+
+
 ./ sectionStart
+
 .SS API Description
+
 The 
 .B shmem\_malloc
 routine returns a pointer to a block of at least
@@ -149,9 +164,14 @@ PEs; if differing
 .I size
 arguments are used, the behavior of the call
 and any subsequent OpenSHMEM calls becomes undefined.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 The 
 .B shmem\_malloc
 routine returns a pointer to the allocated space;
@@ -170,8 +190,12 @@ The
 .B shmem\_align
 routine returns an aligned pointer to the allocated
 space; otherwise, it returns a NULL pointer.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
 
 As of Specification 1.2 the use of 
@@ -207,10 +231,14 @@ The
 routines
 differ from the private heap allocation routines in that all PEs in a
 program must call them (a barrier is used to ensure this).
+
 ./ sectionEnd
 		
+
 ./ sectionStart
-.SS Note to implementors
+
+.SS API Notes
+
 The symmetric heap allocation routines always return a pointer to corresponding
 symmetric objects across all PEs. The OpenSHMEM specification does not
 require that the virtual addresses are equal across all PEs. Nevertheless,
@@ -221,9 +249,8 @@ implementation may re-map the allocated block of memory based on agreed virtual
 address. Additionally, some operating systems provide an option to disable
 virtual address randomization, which enables predictable allocation of virtual
 memory addresses.
+
 ./ sectionEnd
-
-
 
 
 

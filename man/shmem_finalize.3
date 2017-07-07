@@ -1,32 +1,55 @@
-.TH SHMEM_FINALIZE 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_FINALIZE 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_finalize \-  A collective operation that releases resources used by the OpenSHMEM library. This only terminates the OpenSHMEM portion of a program, not the entire program. 
+shmem_finalize \- 
+A collective operation that releases resources used by the OpenSHMEM
+library. This only terminates the OpenSHMEM portion of a program, not the
+entire program.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
 
-
-
 .B void
-.B shmem_finalize(void);
+.B shmem_finalize(void)
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "CALL " "SHMEM_FINALIZE()"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
 .B None.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 .B shmem\_finalize
 is a collective operation that ends the OpenSHMEM
 portion of a program previously initialized by 
@@ -54,13 +77,23 @@ call to
 .B shmem\_finalize
 returns, but they will no longer have access
 to any resources that have been released.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 .B shmem\_finalize
 releases all resources used by the OpenSHMEM library
 including the symmetric memory heap and pointers initiated by
@@ -78,7 +111,11 @@ is optional. However, an explicit
 .B shmem\_finalize
 may be required as an entry point for wrappers used
 by profiling or other tools that need to perform their own finalization.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 

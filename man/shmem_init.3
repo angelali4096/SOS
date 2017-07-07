@@ -1,32 +1,55 @@
-.TH SHMEM_INIT 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_INIT 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_init \-  A collective operation that allocates and initializes the resources used by the OpenSHMEM library. 
+shmem_init \- 
+A collective operation that allocates and initializes the resources used by
+the OpenSHMEM library.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
 
-
-
 .B void
-.B shmem_init(void);
+.B shmem_init(void)
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "CALL " "SHMEM_INIT()"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
 .B None.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 .B shmem\_init
 allocates and initializes resources used by the OpenSHMEM
 library. It is a collective operation that all PEs must call before any
@@ -43,14 +66,23 @@ subsequent call to
 .B shmem\_init
 in the same program results in undefined
 behavior.
-./ sectionEnd
-./ sectionStart
-.SS Return Values
-None.
+
 ./ sectionEnd
 
+
 ./ sectionStart
+
+.SS Return Values
+
+None.
+
+./ sectionEnd
+
+
+./ sectionStart
+
 .SS API Notes
+
 As of OpenSHMEM Specification 1.2 the use of 
 .B start\_pes
 has been
@@ -81,7 +113,11 @@ case of
 .B start\_pes
 after the
 first one resulted in a no-op.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 

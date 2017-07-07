@@ -1,15 +1,19 @@
-.TH SHMEM_GET_NBI 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_GET_NBI 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_get_nbi \-  The nonblocking get routines provide a method for copying data from a contiguous remote data object on the specified PE to the local data object.  
+shmem_get_nbi \- 
+The nonblocking get routines provide a method for copying data from a
+contiguous remote data object on the specified PE to the local data object. 
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C11:
-
-
 
 .B void
 .B shmem_get_nbi(TYPE
@@ -22,14 +26,15 @@ shmem_get_nbi \-  The nonblocking get routines provide a method for copying data
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* For details on TYPE and TYPENAME, please refer to Table 1 below.
+where TYPE is one of the standard RMA types specified by Table 1.
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B shmem_<TYPENAME>_get_nbi(TYPE
@@ -42,13 +47,14 @@ shmem_get_nbi \-  The nonblocking get routines provide a method for copying data
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* For details on TYPE and TYPENAME, please refer to Table 1 below.
+where TYPE is one of the standard RMA types and has a corresponding TYPENAME specified by Table 1.
 ./ sectionStart
-
-
 
 .B void
 .B shmem_get<SIZE>_nbi(void
@@ -61,16 +67,14 @@ shmem_get_nbi \-  The nonblocking get routines provide a method for copying data
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-
 where SIZE is one of 8, 16, 32, 64, 128.
-
-
 ./ sectionStart
-
-
 
 .B void
 .B shmem_getmem_nbi(void
@@ -83,10 +87,18 @@ where SIZE is one of 8, 16, 32, 64, 128.
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "nelems, pe"
 .BR "CALL " "SHMEM_CHARACTER_GET_NBI(dest, source, nelems, pe)"
 .BR "CALL " "SHMEM_COMPLEX_GET_NBI(dest, source, nelems, pe)"
@@ -100,13 +112,18 @@ where SIZE is one of 8, 16, 32, 64, 128.
 .BR "CALL " "SHMEM_INTEGER_GET_NBI(dest, source, nelems, pe)"
 .BR "CALL " "SHMEM_LOGICAL_GET_NBI(dest, source, nelems, pe)"
 .BR "CALL " "SHMEM_REAL_GET_NBI(dest, source, nelems, pe)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
 .BR "OUT " -
 .I dest
 - Local data object to be updated.
@@ -130,7 +147,7 @@ arrays.
 .I nelems
 must be of type 
 .I size\_t
-for C. When
+for C. If you are
 using Fortran, it must be a constant, variable, or array element of default
 integer type.
 
@@ -140,11 +157,15 @@ integer type.
 - PE number of the remote PE. 
 .I pe
 must
-be of type integer. When using Fortran, it must be a constant,
+be of type integer. If you are using Fortran, it must be a constant,
 variable, or array element of default integer type.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 The get routines provide a method for copying a contiguous symmetric data
 object from a different PE to a contiguous data object on the local
 PE. The routines return after posting the operation. The operation is considered 
@@ -156,57 +177,74 @@ At the completion of
 data has been delivered to the 
 .I "dest"
 array on the local PE. 
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
+
 The 
 .I "dest"
 and 
 .I "source"
-data objects must conform to typing constraints, which are as follows: 
-.TP 20
+data objects must conform to typing constraints,
+which are as follows:
+
+.TP 25
 Routine
 Data type of 
 .I dest
 and 
 .I source
+
 ./ sectionEnd
 
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_getmem\_nbi
 Fortran: Any noncharacter type. C: Any data type. nelems is scaled in bytes.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_get4\_nbi, shmem\_get32\_nbi
 Any noncharacter type that has a storage size equal to 32 bits.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_get8\_nbi
 C: Any noncharacter type that has a storage size equal to 8 bits.
 ./ sectionEnd
+
+
 
 ./ sectionStart
 Fortran: Any noncharacter type that has a storage size equal to 64 bits.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_get64\_nbi
 Any noncharacter type that has a storage size equal to 64 bits.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_get128\_nbi
 Any noncharacter type that has a storage size equal to 128 bits.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_CHARACTER\_GET\_NBI
 Elements of type character. 
 .I nelems
@@ -217,55 +255,70 @@ and
 variables are ignored.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_COMPLEX\_GET\_NBI
 Elements of type complex of default size.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_DOUBLE\_GET\_NBI
 Fortran: Elements of type double precision.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_INTEGER\_GET\_NBI
 Elements of type integer.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_LOGICAL\_GET\_NBI
 Elements of type logical.
 ./ sectionEnd
 
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_REAL\_GET\_NBI
 Elements of type real.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 Please refer to the subsection on the Memory Model for the definition of the term "remotely accessible".
-When using Fortran, data types must be of default size. For example, a real
+If you are using Fortran, data types must be of default size. For example, a real
 variable must be declared as REAL, REAL*4, or
 REAL(KIND=KIND(1.0)).
+
 ./ sectionEnd
 
 
 
 
-
-.SS Table 1: 
-.TP 20
-.B TYPE
-.B TYPENAME
+.SS Table 1:
+Standard RMA Types and Names
+.TP 25
+.B \TYPE
+.B \TYPENAME
 .TP
 float
 float
@@ -309,32 +362,32 @@ ulong
 unsigned long long
 ulonglong
 .TP
-int8_t
+int8\_t
 int8
 .TP
-int16_t
+int16\_t
 int16
 .TP
-int32_t
+int32\_t
 int32
 .TP
-int64_t
+int64\_t
 int64
 .TP
-uint8_t
+uint8\_t
 uint8
 .TP
-uint16_t
+uint16\_t
 uint16
 .TP
-uint32_t
+uint32\_t
 uint32
 .TP
-uint64_t
+uint64\_t
 uint64
 .TP
-size_t
+size\_t
 size
 .TP
-ptrdiff_t
+ptrdiff\_t
 ptrdiff

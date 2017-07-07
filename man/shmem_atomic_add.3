@@ -1,15 +1,18 @@
-.TH SHMEM_ATOMIC_ADD 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_ATOMIC_ADD 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_atomic_add \-  Performs an atomic add operation on a remote symmetric data object. 
+shmem_atomic_add \- 
+Performs an atomic add operation on a remote symmetric data object.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C11:
-
-
 
 .B void
 .B shmem_atomic_add(TYPE
@@ -19,14 +22,16 @@ shmem_atomic_add \-  Performs an atomic add operation on a remote symmetric data
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the standard AMO types. For details, please refer to Table 2 below.
+where TYPE is one of the standard AMO types specified by
+Table 2.
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B shmem_<TYPENAME>_atomic_add(TYPE
@@ -36,29 +41,40 @@ shmem_atomic_add \-  Performs an atomic add operation on a remote symmetric data
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the standard AMO types. For details, please refer to Table 2 below.
+where TYPE is one of the standard AMO types and has a corresponding
+TYPENAME specified by Table 2.
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "pe"
 .BR "INTEGER*4 " "value_i4"
 .BR "CALL " "SHMEM_INT4_ADD(dest, value_i4, pe)"
 .BR "INTEGER*8 " "value_i8"
 .BR "CALL " "SHMEM_INT8_ADD(dest, value_i8, pe)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
 .BR "OUT " -
 .I dest
 - The remotely accessible integer data object to be
-updated on the remote PE. When using  C/C++, the type of
+updated on the remote PE. If you are using  C/C++, the type of
 .I "dest"
 should match that implied in the SYNOPSIS section.
 
@@ -67,23 +83,29 @@ should match that implied in the SYNOPSIS section.
 .I value
 - The value to be atomically added to 
 .IR "dest" .
-When using  C/C++, the type of 
+If you
+are using  C/C++, the type of 
 .I value
 should match that implied in
-the SYNOPSIS section. When using Fortran, it must be of type
+the SYNOPSIS section. If you are using Fortran, it must be of type
 integer with an element size of 
 .IR "dest" .
+
 
 
 .BR "IN " -
 .I pe
 - An integer that indicates the PE number upon which
 .I "dest"
-is to be updated. When using Fortran, it must be a default
+is to be updated. If you are using Fortran, it must be a default
 integer value.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 The 
 .B shmem\_atomic\_add
 routine performs an atomic add operation. It adds
@@ -95,39 +117,64 @@ on PE
 and atomically updates the 
 .I "dest"
 without returning the value.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-When using Fortran, 
+
+If you are using Fortran, 
 .I dest
-must be of the following type: 
-.TP 20
+must be of the following type:
+
+.TP 25
 Routine
 Data type of 
 .I dest
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_INT4\_ADD
 4-byte integer
 ./ sectionEnd
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_INT8\_ADD
 8-byte integer
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 As of OpenSHMEM[1.4], 
 .B shmem\_add
 has been deprecated.
 Its behavior and call signature are identical to the replacement
 interface, 
 .BR "shmem\_atomic\_add" .
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 
@@ -157,10 +204,11 @@ int main(void)
 
 
 
-.SS Table 2: 
-.TP 20
-.B TYPE
-.B TYPENAME
+.SS Table 2:
+Standard AMO Types and Names
+.TP 25
+.B \TYPE
+.B \TYPENAME
 .TP
 int
 int
@@ -170,30 +218,3 @@ long
 .TP
 long long
 longlong
-.TP
-unsigned int
-uint
-.TP
-unsigned long
-ulong
-.TP
-unsigned long long
-ulonglong
-.TP
-int32_t
-int32
-.TP
-int64_t
-int64
-.TP
-uint32_t
-uint32
-.TP
-uint64_t
-uint64
-.TP
-size_t
-size
-.TP
-ptrdiff_t
-ptrdiff

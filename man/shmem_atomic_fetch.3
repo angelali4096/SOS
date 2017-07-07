@@ -1,15 +1,18 @@
-.TH SHMEM_ATOMIC_FETCH 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_ATOMIC_FETCH 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_atomic_fetch \-  Atomically fetches the value of a remote data object. 
+shmem_atomic_fetch \- 
+Atomically fetches the value of a remote data object.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C11:
-
-
 
 .B TYPE
 .B shmem_atomic_fetch(const
@@ -18,14 +21,16 @@ shmem_atomic_fetch \-  Atomically fetches the value of a remote data object.
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the extended AMO types. For details, please refer to Table 3 below.
+where TYPE is one of the extended AMO types specified by
+Table 3.
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B TYPE
 .B shmem_<TYPENAME>_atomic_fetch(const
@@ -34,13 +39,19 @@ shmem_atomic_fetch \-  Atomically fetches the value of a remote data object.
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the extended AMO types. For details, please refer to Table 3 below.
+where TYPE is one of the extended AMO types and has a corresponding
+TYPENAME specified by Table 3.
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "pe"
 .BR "INTEGER*4 " "SHMEM_INT4_FETCH, ires_i4"
 ires_i4 = SHMEM_INT4_FETCH(dest, pe)
@@ -50,15 +61,19 @@ ires_i8 = SHMEM_INT8_FETCH(dest, pe)
 res_r4 = SHMEM_REAL4_FETCH(dest, pe)
 .BR "REAL*8 " "SHMEM_REAL8_FETCH, res_r8"
 res_r8 = SHMEM_REAL8_FETCH(dest, pe)
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "IN " -
 .I dest
 - The remotely accessible data object to be fetched from
@@ -70,43 +85,56 @@ the remote PE.
 - An integer that indicates the PE number from which
 .I dest
 is to be fetched.
-
-
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 .B shmem\_atomic\_fetch
 performs an atomic fetch operation.
 It returns the contents of the 
 .I dest
 as an atomic operation.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 The contents at the 
 .I dest
 address on the remote PE.
 The data type of the return value is the same as the type of
 the remote data object.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 As of OpenSHMEM[1.4], 
 .B shmem\_fetch
 has been deprecated.
 Its behavior and call signature are identical to the replacement
 interface, 
 .BR "shmem\_atomic\_fetch" .
+
 ./ sectionEnd
 
 
 
 
-
-.SS Table 3: 
-.TP 20
-.B TYPE
-.B TYPENAME
+.SS Table 3:
+Extended AMO Types and Names
+.TP 25
+.B \TYPE
+.B \TYPENAME
 .TP
 float
 float
@@ -122,30 +150,3 @@ long
 .TP
 long long
 longlong
-.TP
-unsigned int
-uint
-.TP
-unsigned long
-ulong
-.TP
-unsigned long long
-ulonglong
-.TP
-int32_t
-int32
-.TP
-int64_t
-int64
-.TP
-uint32_t
-uint32
-.TP
-uint64_t
-uint64
-.TP
-size_t
-size
-.TP
-ptrdiff_t
-ptrdiff

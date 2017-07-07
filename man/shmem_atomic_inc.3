@@ -1,15 +1,18 @@
-.TH SHMEM_ATOMIC_INC 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_ATOMIC_INC 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_atomic_inc \-  Performs an atomic increment operation on a remote data object. 
+shmem_atomic_inc \- 
+Performs an atomic increment operation on a remote data object.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C11:
-
-
 
 .B void
 .B shmem_atomic_inc(TYPE
@@ -17,14 +20,16 @@ shmem_atomic_inc \-  Performs an atomic increment operation on a remote data obj
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the standard AMO types. For details, please refer to Table 2 below.
+where TYPE is one of the standard AMO types specified by
+Table 2.
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B shmem_<TYPENAME>_atomic_inc(TYPE
@@ -32,25 +37,35 @@ shmem_atomic_inc \-  Performs an atomic increment operation on a remote data obj
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
 
 
-* TYPE is one of the standard AMO types. For details, please refer to Table 2 below.
+where TYPE is one of the standard AMO types and has a corresponding
+TYPENAME specified by Table 2.
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "pe"
 .BR "CALL " "SHMEM_INT4_INC(dest, pe)"
 .BR "CALL " "SHMEM_INT8_INC(dest, pe)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "IN " -
 .I dest
 - The remotely accessible integer data object to be updated
@@ -64,52 +79,80 @@ SYNOPSIS section.
 .I pe
 - An integer that indicates the PE number on which
 .I "dest"
-is to be updated. When using Fortran, it must be a default
+is to be updated. If you are using Fortran, it must be a default
 integer value.
-
-
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 These routines perform an atomic increment operation on the 
 .I dest
 data
 object on PE.
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
-When using Fortran, 
+
+If you are using Fortran, 
 .I dest
-must be of the following type: 
-.TP 20
+must be of the following type:
+
+.TP 25
 Routine
 Data type of 
 .I dest
 and 
 .I source
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_INT4\_INC
 4-byte integer
 ./ sectionEnd
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 SHMEM\_INT8\_INC
 8-byte integer
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 As of OpenSHMEM[1.4], 
 .B shmem\_inc
 has been deprecated.
 Its behavior and call signature are identical to the replacement
 interface, 
 .BR "shmem\_atomic\_inc" .
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 
@@ -117,7 +160,8 @@ interface,
 
 The following 
 .B shmem\_atomic\_inc
-example is for C[11] programs: 
+example is for
+C[11] programs: 
 
 .nf
 #include <stdio.h>
@@ -141,10 +185,11 @@ int main(void)
 
 
 
-.SS Table 2: 
-.TP 20
-.B TYPE
-.B TYPENAME
+.SS Table 2:
+Standard AMO Types and Names
+.TP 25
+.B \TYPE
+.B \TYPENAME
 .TP
 int
 int
@@ -154,30 +199,3 @@ long
 .TP
 long long
 longlong
-.TP
-unsigned int
-uint
-.TP
-unsigned long
-ulong
-.TP
-unsigned long long
-ulonglong
-.TP
-int32_t
-int32
-.TP
-int64_t
-int64
-.TP
-uint32_t
-uint32
-.TP
-uint64_t
-uint64
-.TP
-size_t
-size
-.TP
-ptrdiff_t
-ptrdiff

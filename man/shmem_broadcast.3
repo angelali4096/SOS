@@ -1,15 +1,19 @@
-.TH SHMEM_BROADCAST 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_BROADCAST 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_broadcast \-  Broadcasts a block of data from one PE to one or more destination PEs. 
+shmem_broadcast \- 
+Broadcasts a block of data from one PE to one or more destination
+PEs.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B shmem_broadcast32(void
@@ -52,26 +56,37 @@ shmem_broadcast \-  Broadcasts a block of data from one PE to one or more destin
 .B long
 .I *pSync
 .B );
+
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "nelems, PE_root, PE_start, logPE_stride, PE_size"
 .BR "INTEGER " "pSync(SHMEM_BCAST_SYNC_SIZE)"
 .BR "CALL " "SHMEM_BROADCAST4(dest, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync)"
 .BR "CALL " "SHMEM_BROADCAST8(dest, source, nelems, PE_root, PE_start, logPE_stride, PE_size, pSync)"
 .BR "CALL " "SHMEM_BROADCAST32(dest, source, nelems, PE_root, PE_start, logPE_stride, PE_size,pSync)"
 .BR "CALL " "SHMEM_BROADCAST64(dest, source, nelems, PE_root, PE_start, logPE_stride, PE_size,pSync)"
+
 .fi
+
 ./ sectionEnd
 
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "OUT " -
 .I dest
 - A symmetric data object. 
@@ -96,7 +111,7 @@ and
 , this is the number of
 32-bit halfwords. nelems must be of type 
 .I size\_t
-in C. When
+in C. If you are
 using Fortran, it must be a default integer value.
 
 
@@ -110,7 +125,8 @@ the
 .IR "PE\_size" .
 . 
 .I PE\_root
-must be of type integer. When using Fortran, it must be a default integer value.
+must be of type integer. If you
+are using Fortran, it must be a default integer value.
 
 
 .BR "IN " -
@@ -120,7 +136,7 @@ must be of type integer. When using Fortran, it must be a default integer value.
 of
 PEs. 
 .I PE\_start
-must be of type integer. When using Fortran,
+must be of type integer. If you are using Fortran,
 it must be a default integer value.
 
 
@@ -131,7 +147,7 @@ consecutive PE numbers in the
 .IR "Active set" .
 .I log\_PE\_stride
 must be of
-type integer. When using Fortran, it must be a default integer value.
+type integer. If you are using Fortran, it must be a default integer value.
 
 
 .BR "IN " -
@@ -139,7 +155,7 @@ type integer. When using Fortran, it must be a default integer value.
 -  The number of PEs in the 
 .IR "Active set" .
 .I PE\_size
-must be of type integer. When using Fortran, it must be a
+must be of type integer. If you are using Fortran, it must be a
 default integer value.
 
 
@@ -158,10 +174,11 @@ Fortran) before any of the PEs in the
 enter
 .BR "shmem\_broadcast" .
 
-
-
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
 
 OpenSHMEM broadcast routines are collective routines. They copy data object
@@ -210,8 +227,8 @@ passed to all PEs in the
 .IR "Active set" .
 
 
-Before any PE calls a broadcast routine, the following
-conditions must be met: (synchronization via a barrier or some other method is often
+Before any PE calls a broadcast routine, you must ensure that the following
+conditions exist (synchronization via a barrier or some other method is often
 needed to ensure this): The 
 .I pSync
 array on all PEs in the
@@ -233,36 +250,58 @@ data object may be safely reused.
 The values in the 
 .I pSync
 array are restored to the original values.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
+
 The 
 .I "dest"
 and 
 .I "source"
-data objects must conform to certain typing constraints, which are as follows: 
-.TP 20
+data objects must conform to certain typing
+constraints, which are as follows:
+
+.TP 25
 Routine
 Data type of 
 .I dest
 and 
 .I source
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_broadcast8, shmem\_broadcast64
 Any noncharacter type that has an element size of 64 bits. No Fortran derived types or  C/C++ structures are allowed.
 ./ sectionEnd
+
+
 ./ sectionStart
-.TP 20
+.TP 25
 shmem\_broadcast4, shmem\_broadcast32
 Any noncharacter type that has an element size of 32 bits. No Fortran derived types or  C/C++ structures are allowed.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 All OpenSHMEM broadcast routines restore 
 .I pSync
 to its original contents.
@@ -273,7 +312,7 @@ require that
 .I pSync
 be reinitialized after the first call.
 
-The user must ensure that the 
+You must ensure the that the 
 .I pSync
 array is not being updated by any
 PE in the 
@@ -298,7 +337,11 @@ used the same
 .I pSync
 array. In general, this can be ensured only by doing
 some type of synchronization. 
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 

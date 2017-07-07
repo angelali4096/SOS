@@ -1,15 +1,19 @@
-.TH SHMEM_ADDR_ACCESSIBLE 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_ADDR_ACCESSIBLE 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_addr_accessible \-  Determines whether an address is accessible via OpenSHMEM data transfer routines from the specified remote PE. 
+shmem_addr_accessible \- 
+Determines whether an address is accessible via OpenSHMEM data transfer
+routines from the specified remote PE.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B int
 .B shmem_addr_accessible(const
@@ -18,20 +22,33 @@ shmem_addr_accessible \-  Determines whether an address is accessible via OpenSH
 .B int
 .I pe
 .B );
+
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "LOGICAL " "LOG, SHMEM_ADDR_ACCESSIBLE"
 .BR "INTEGER " "pe"
 LOG = SHMEM_ADDR_ACCESSIBLE(addr, pe)
+
 .fi
+
 ./ sectionEnd
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
 .BR "IN " -
 .I addr
 - Data object on the local PE.
@@ -41,8 +58,12 @@ LOG = SHMEM_ADDR_ACCESSIBLE(addr, pe)
 .I pe
 - Integer id of a remote PE.
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
+
 .B shmem\_addr\_accessible
 is a query routine that indicates whether a local
 address is accessible via OpenSHMEM routines from the specified remote PE. 
@@ -66,9 +87,14 @@ or
 .B shpalloc
 ) is symmetric across the
 same or different executable files.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 C/C++: The return value is 1 if 
 .I addr
 is a symmetric data object
@@ -80,14 +106,17 @@ Fortran: The return value is .TRUE. if
 is a symmetric data
 object and accessible via OpenSHMEM routines from the specified remote PE;
 otherwise, it is .FALSE..
+
 ./ sectionEnd
+
 		
 ./ sectionStart
+
 .SS API Notes
+
 None.
+
 ./ sectionEnd
-
-
 
 
 

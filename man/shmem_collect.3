@@ -1,15 +1,19 @@
-.TH SHMEM_COLLECT 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_COLLECT 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_collect \-  Concatenates blocks of data from multiple PEs to an array in every PE. 
+shmem_collect \- 
+Concatenates blocks of data from multiple PEs to an array in every
+PE.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
 ./ sectionStart
 .SS C/C++:
-
-
 
 .B void
 .B shmem_collect32(void
@@ -88,10 +92,18 @@ shmem_collect \-  Concatenates blocks of data from multiple PEs to an array in e
 .B long
 .I *pSync
 .B );
+
+
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "INTEGER " "nelems"
 .BR "INTEGER " "PE_start, logPE_stride, PE_size"
 .BR "INTEGER " "pSync(SHMEM_COLLECT_SYNC_SIZE)"
@@ -103,15 +115,19 @@ shmem_collect \-  Concatenates blocks of data from multiple PEs to an array in e
 .BR "CALL " "SHMEM_FCOLLECT8(dest, source, nelems, PE_start, logPE_stride, PE_size, pSync)"
 .BR "CALL " "SHMEM_FCOLLECT32(dest, source, nelems, PE_start, logPE_stride, PE_size, pSync)"
 .BR "CALL " "SHMEM_FCOLLECT64(dest, source, nelems, PE_start, logPE_stride, PE_size, pSync)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "OUT " -
 .I dest
 - A symmetric array. The 
@@ -159,7 +175,7 @@ array.
 .I nelems
 must be of type 
 .I size\_t
-for C. When using Fortran, it must be
+for C. If you are using Fortran, it must be
 a default integer value.
 
 
@@ -170,7 +186,7 @@ a default integer value.
 of
 PEs. 
 .I PE\_start
-must be of type integer. When using Fortran,
+must be of type integer. If you are using Fortran,
 it must be a default integer value.
 
 
@@ -181,7 +197,7 @@ consecutive PE numbers in the
 .IR "Active set" .
 .I logPE\_stride
 must be of
-type integer. When using Fortran, it must be a default integer value.
+type integer. If you are using Fortran, it must be a default integer value.
 
 
 .BR "IN " -
@@ -189,7 +205,7 @@ type integer. When using Fortran, it must be a default integer value.
 - The number of PEs in the 
 .IR "Active set" .
 .I PE\_size
-must be of type integer. When using Fortran, it must be a default
+must be of type integer. If you are using Fortran, it must be a default
 integer value.
 
 
@@ -201,7 +217,7 @@ must be of
 type long and size SHMEM\_COLLECT\_SYNC\_SIZE. In Fortran,
 .I pSync
 must be of type integer and size SHMEM\_COLLECT\_SYNC\_SIZE.
-When using Fortran, it must be a default integer value. Every element of
+If you are using Fortran, it must be a default integer value. Every element of
 this array must be initialized with the value SHMEM\_SYNC\_VALUE in
 C/C++ or SHMEM\_SYNC\_VALUE in Fortran before any of the PEs
 in the 
@@ -211,10 +227,11 @@ enter
 or 
 .BR "shmem\_fcollect" .
 
-
-
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
 
 OpenSHMEM 
@@ -296,13 +313,23 @@ The values in the
 .I pSync
 array are
 restored to the original values.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 All OpenSHMEM collective routines reset the values in 
 .I pSync
 before they
@@ -311,7 +338,7 @@ return, so a particular
 buffer need only be initialized the first
 time it is used.
 
-The user must ensure that the 
+You must ensure that the 
 .I pSync
 array is not being updated on any PE
 in the 
@@ -342,7 +369,11 @@ with some performance degradation. They operate
 with no performance degradation when 
 .I nelems
 is a non-power-of-two value.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 

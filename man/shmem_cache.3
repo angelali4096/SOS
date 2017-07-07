@@ -1,22 +1,26 @@
-.TH SHMEM_CACHE 3  "Open Source Software Solutions, Inc." "OpenSHEMEM Library Documentation"
+.TH SHMEM_CACHE 3 "Open Source Software Solutions, Inc.""OpenSHEMEM Library Documentation"
 ./ sectionStart
 .SH NAME
-shmem_cache \-  Controls data cache utilities. 
+shmem_cache \- 
+Controls data cache utilities.
+
 ./ sectionEnd
+
+
 ./ sectionStart
 .SH   SYNOPSIS
 ./ sectionEnd
+
+
 ./ sectionStart
 .SS C/C++:
 
+.B void
+.B shmem_clear_cache_inv(void)
 
 
 .B void
-.B shmem_clear_cache_inv(void);
-
-
-.B void
-.B shmem_set_cache_inv(void);
+.B shmem_set_cache_inv(void)
 
 
 .B void
@@ -34,41 +38,57 @@ shmem_cache \-  Controls data cache utilities.
 
 
 .B void
-.B shmem_udcflush(void);
+.B shmem_udcflush(void)
 
 
 .B void
 .B shmem_udcflush_line(void
 .I *dest
 .B );
+
+
+
 ./ sectionEnd
+
+
+
+
+
 ./ sectionStart
 .SS Fortran:
+
 .nf
+
 .BR "CALL " "SHMEM_CLEAR_CACHE_INV"
 .BR "CALL " "SHMEM_SET_CACHE_INV"
 .BR "CALL " "SHMEM_SET_CACHE_LINE_INV(dest)"
 .BR "CALL " "SHMEM_UDCFLUSH"
 .BR "CALL " "SHMEM_UDCFLUSH_LINE(dest)"
+
 .fi
+
 ./ sectionEnd
+
+
+
+
+
+
 ./ sectionStart
+
 .SH DESCRIPTION
 .SS Arguments
-
-
-
-
 .BR "IN " -
 .I dest
 - A data object that is local to the PE. 
 .I dest
-can be of any noncharacter type. When using Fortran, it can be of any
+can be of any noncharacter type. If you are using Fortran, it can be of any
 kind.
-
-
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Description
 
 .B shmem\_set\_cache\_inv
@@ -100,20 +120,34 @@ makes coherent the cache line that corresponds with
 the address specified by 
 .IR "dest" .
 .
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS Return Values
+
 None.
+
 ./ sectionEnd
+
+
 ./ sectionStart
+
 .SS API Notes
+
 These routines have been retained for improved backward compatibility with
 legacy architectures. They are not required to be supported by implementing
 them as 
 .I no-ops
 and where used, they may have no effect on cache line
 states.
+
 ./ sectionEnd
+
+
+
 ./ sectionStart
 .SS Examples
 
