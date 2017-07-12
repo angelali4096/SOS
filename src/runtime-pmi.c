@@ -26,6 +26,7 @@
 #include <portals4/pmi.h>
 #else
 #include <pmi.h>
+#include <pmix.h>
 #endif
 
 #include "runtime.h"
@@ -105,7 +106,7 @@ shmem_runtime_init(void)
 {
     int initialized;
 
-    if (PMI_SUCCESS != PMI_Initialized(&initialized)) {
+    if (PMI_SUCCESS != PMIx_Initialized(&initialized)) {
         return 1;
     }
 

@@ -279,6 +279,8 @@ CHECK_CMA(
     [transport_cma="yes"],
     [transport_cma="no"])
 
+OPAL_CHECK_PMIX
+
 # If both XPMEM and CMA requested, user needs to choose one:
 if test -n "$with_xpmem" -a "$with_xpmem" != "no" -a -n "$with_cma" -a "$with_cma" != "no" ; then
     AC_MSG_ERROR([Cannot choose both XPMEM and CMA transports, see --help for details])
@@ -550,11 +552,11 @@ if test "$transport_xpmem" = "yes" ; then
     WRAPPER_COMPILER_EXTRA_LIBS="$XPMEM_LIBS"
 fi
 
-CPPFLAGS="$CPPFLAGS $pmi_CPPFLAGS"
-LDFLAGS="$LDFLAGS $pmi_LDFLAGS $aslr_LDFLAGS"
-LIBS="$LIBS $pmi_LIBS"
-WRAPPER_COMPILER_EXTRA_LDFLAGS="$WRAPPER_COMPILER_EXTRA_LDFLAGS $pmi_LDFLAGS $aslr_LDFLAGS"
-WRAPPER_COMPILER_EXTRA_LIBS="$WRAPPER_COMPILER_LIBS $pmi_LIBS"
+CPPFLAGS="$CPPFLAGS $pmi_CPPFLAGS $opal_external_pmix_CPPFLAGS"
+LDFLAGS="$LDFLAGS $pmi_LDFLAGS $opal_external_pmix_LDFLAGS $aslr_LDFLAGS"
+LIBS="$LIBS $pmi_LIBS $opal_external_pmix_LIBS"
+WRAPPER_COMPILER_EXTRA_LDFLAGS="$WRAPPER_COMPILER_EXTRA_LDFLAGS $pmi_LDFLAGS $opal_external_pmix_LDFLAGS $aslr_LDFLAGS"
+WRAPPER_COMPILER_EXTRA_LIBS="$WRAPPER_COMPILER_LIBS $pmi_LIBS $opal_external_pmix_LIBS"
 
 # Need the libtool binary before setting up rpath
 LT_OUTPUT
@@ -594,7 +596,7 @@ fi
 
 AC_OUTPUT
 
-AS_IF([test "$enable_pmi_simple" != "yes" -a "$ompi_check_pmi_happy" != "yes" -a -z "$pmi_type"],
+AS_IF([test "$enable_pmi_simple" != "yes" -a "$ompi_check_pmi_happy" != "yes" -a -z "$pmi_type" -a "$opal_external_pmix_version_found" != 1],
          [AC_MSG_WARN([No PMI found, if build fails consider --enable-pmi-simple or --with-pmi])])
 
 AS_IF([test "$transport_portals4" != "yes" -a "$transport_xpmem" != "yes" -a "$transport_cma" != "yes" -a "$transport_ofi" != "yes"],
