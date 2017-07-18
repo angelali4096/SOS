@@ -13,7 +13,7 @@ dnl                         All rights reserved.
 dnl Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
 dnl Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
 dnl Copyright (c) 2009-2015 Cisco Systems, Inc.  All rights reserved.
-dnl Copyright (c) 2014      Intel, Inc. All rights reserved.
+dnl Copyright (c) 2014-2017 Intel, Inc. All rights reserved.
 dnl Copyright (c) 2015-2016 Research Organization for Information Science
 dnl                         and Technology (RIST). All rights reserved.
 dnl
@@ -97,8 +97,6 @@ EOF
 OPAL_CONFIGURE_USER="`whoami`"
 OPAL_CONFIGURE_HOST="`hostname | head -n 1`"
 OPAL_CONFIGURE_DATE="`date`"
-
-OPAL_LIBNL_SANITY_INIT
 
 #
 # Save these details so that they can be used in opal_info later

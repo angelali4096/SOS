@@ -12,7 +12,7 @@ dnl Copyright (c) 2004-2005 The Regents of the University of California.
 dnl                         All rights reserved.
 dnl Copyright (c) 2012-2015 Cisco Systems, Inc.  All rights reserved.
 dnl Copyright (c) 2012      Oracle and/or its affiliates.  All rights reserved.
-dnl Copyright (c) 2014      Intel, Inc. All rights reserved.
+dnl Copyright (c) 2014-2017 Intel, Inc. All rights reserved.
 dnl Copyright (c) 2015-2016 Research Organization for Information Science
 dnl                         and Technology (RIST). All rights reserved.
 dnl $COPYRIGHT$
@@ -138,10 +138,6 @@ AC_DEFUN([_OPAL_CHECK_PACKAGE_LIB], [
                   test "$ac_cv_search_$3" != "none required"],
                  [$1_LIBS="$ac_cv_search_$3 $4"],
                  [$1_LIBS="$4"])
-            # libnl v1 and libnl3 are known *not* to coexist
-            # for each library, figure out whether it depends on libnl or libnl3 or none
-            # so conflicts can be reported and/or prevented
-            OPAL_LIBNL_SANITY_CHECK([$2], [$3], [$$1_LIBS])
            $7],
           [$8])
 
