@@ -115,8 +115,13 @@ if USE_PMI2
 libsma_la_SOURCES += \
 	runtime-pmi2.c
 else
+#if USE_PMIX
 libsma_la_SOURCES += \
-	runtime-pmi.c
+	runtime-pmix.c
+#else
+#libsma_la_SOURCES += \
+#	runtime-pmix.c
+#endif
 endif
 
 
