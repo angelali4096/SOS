@@ -26,11 +26,14 @@
 #include <portals4/pmi.h>
 #else
 #include <pmi.h>
+#include <pmix.h>
 #endif
 
 #include "runtime.h"
 #include "shmem_internal.h"
 #include "uthash.h"
+
+static pmix_proc_t myproc;
 
 static int rank = -1;
 static int size = 0;
@@ -104,57 +107,74 @@ int
 shmem_runtime_init(void)
 {
     fprintf(stderr, "HELLO FROM PMIX\n");
-    int initialized;
+    // int initialized;
 
-    if (PMI_SUCCESS != PMI_Initialized(&initialized)) {
-        return 1;
-    }
+    // if (PMI_SUCCESS != PMI_Initialized(&initialized)) {
+    //     return 1;
+    // }
+
+    // if (!initialized) {
+    //     if (PMI_SUCCESS != PMI_Init(&initialized)) {
+    //         fprintf(stderr, "Result from PMI_INIT: %d\n", PMI_Init(&initialized));
+	   //  return 2;
+    //     }
+    // }
+
+    // if (PMI_SUCCESS != PMI_Get_rank(&rank)) {
+    //     return 3;
+    // }
+
+    // if (PMI_SUCCESS != PMI_Get_size(&size)) {
+    //     return 4;
+    // }
+
+    // if (size > 1) {
+    //     if (PMI_SUCCESS != PMI_KVS_Get_name_length_max(&max_name_len)) {
+    //         return 5;
+    //     }
+    //     kvs_name = (char*) malloc(max_name_len);
+    //     if (NULL == kvs_name) return 6;
+
+    //     if (PMI_SUCCESS != PMI_KVS_Get_key_length_max(&max_key_len)) {
+    //         return 7;
+    //     }
+    //     if (PMI_SUCCESS != PMI_KVS_Get_value_length_max(&max_val_len)) {
+    //         return 8;
+    //     }
+    //     if (PMI_SUCCESS != PMI_KVS_Get_my_name(kvs_name, max_name_len)) {
+    //         return 9;
+    //     }
+    // }
+    // else {
+    //     /* Use a local KVS for singleton runs */
+    //     max_key_len = SINGLETON_KEY_LEN;
+    //     max_val_len = SINGLETON_VAL_LEN;
+    //     kvs_name = NULL;
+    //     max_name_len = 0;
+    // }
+
+    // kvs_key = (char*) malloc(max_key_len);
+    // if (NULL == kvs_key) return 10;
+
+    // kvs_value = (char*) malloc(max_val_len);
+    // if (NULL == kvs_value) return 11;
+
+    pmix_status_t rc;
+    int initialized = PMIx_Initialized();
 
     if (!initialized) {
-        if (PMI_SUCCESS != PMI_Init(&initialized)) {
-            fprintf(stderr, "Result from PMI_INIT: %d\n", PMI_Init(&initialized));
-	    return 2;
+        if (PMIX_SUCCESS != (rc = PMIx_Init(&myproc, NULL, 0))) {
+            
+            pmix_output_verbose(2, pmix_globals.debug_output, 
+                "PMIx_Init failed");
+
+            PMIX_ERROR_LOG(rc);
+            return rc;
         }
     }
 
-    if (PMI_SUCCESS != PMI_Get_rank(&rank)) {
-        return 3;
-    }
 
-    if (PMI_SUCCESS != PMI_Get_size(&size)) {
-        return 4;
-    }
 
-    if (size > 1) {
-        if (PMI_SUCCESS != PMI_KVS_Get_name_length_max(&max_name_len)) {
-            return 5;
-        }
-        kvs_name = (char*) malloc(max_name_len);
-        if (NULL == kvs_name) return 6;
-
-        if (PMI_SUCCESS != PMI_KVS_Get_key_length_max(&max_key_len)) {
-            return 7;
-        }
-        if (PMI_SUCCESS != PMI_KVS_Get_value_length_max(&max_val_len)) {
-            return 8;
-        }
-        if (PMI_SUCCESS != PMI_KVS_Get_my_name(kvs_name, max_name_len)) {
-            return 9;
-        }
-    }
-    else {
-        /* Use a local KVS for singleton runs */
-        max_key_len = SINGLETON_KEY_LEN;
-        max_val_len = SINGLETON_VAL_LEN;
-        kvs_name = NULL;
-        max_name_len = 0;
-    }
-
-    kvs_key = (char*) malloc(max_key_len);
-    if (NULL == kvs_key) return 10;
-
-    kvs_value = (char*) malloc(max_val_len);
-    if (NULL == kvs_value) return 11;
 
     return 0;
 }
