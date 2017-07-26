@@ -114,8 +114,7 @@ shmem_runtime_init(void)
     if (!initialized) {
         if (PMIX_SUCCESS != (rc = PMIx_Init(&myproc, NULL, 0))) {
             
-            pmix_output_verbose(stderr, pmix_globals.debug_output, 
-                "PMIx_Init failed");
+            fprintf(stderr, "PMIx_Init failed");
 
             PMIX_ERROR_LOG(rc);
             return rc;
@@ -186,8 +185,7 @@ shmem_runtime_abort(int exit_code, const char msg[])
     pmix_status_t rc;
 
     if (PMIX_SUCCESS != (rc = PMIx_Abort(exit_code, msg, NULL, 0))) {
-        pmix_output_verbose(stderr, pmix_globals.debug_output,
-            "PMIx_Abort failed");
+        fprintf(stderr, "PMIx_Abort failed");
 
         PMIX_ERROR_LOG(rc);
     }
