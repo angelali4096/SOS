@@ -25,7 +25,6 @@
 #if defined(PMI_PORTALS4)
 #include <portals4/pmi.h>
 #else
-#include <pmi.h>
 #include <pmix.h>
 #endif
 
@@ -106,27 +105,27 @@ decode(const char *inval, void *outval, int outvallen)
 int
 shmem_runtime_init(void)
 {
-    fprintf(stderr, "HELLO FROM PMIX\n");
+    printf("HELLO FROM PMIX\n");
 
     pmix_status_t rc;
+    pmix_proc_t proc = myproc;
+    proc.rank = PMIX_RANK_WILDCARD;
+    pmix_value_t *val;
+    pmix_info_t info[1];
+
     int initialized = PMIx_Initialized();
 
     if (!initialized) {
         if (PMIX_SUCCESS != (rc = PMIx_Init(&myproc, NULL, 0))) {
             
-            fprintf(stderr, "PMIx_Init failed");
-
-            PMIX_ERROR_LOG(rc);
+            fprintf(stderr, "PMIx_Init failed\n");
             return rc;
         }
-        else {
-            pmix_output_verbose(stderr, pmix_globals.debug_output,
-            "PMIx_Init executed successfully");
-        }
+        // else {
+        //     pmix_output_verbose(stderr, pmix_globals.debug_output,
+        //     "PMIx_Init executed successfully");
+        // }
     }
-
-    rank = myproc.rank;
-    size = //TODO: insert size here
 
     max_key_len = PMIX_MAX_KEYLEN;
     max_name_len = PMIX_MAX_NSLEN;
@@ -137,16 +136,28 @@ shmem_runtime_init(void)
     kvs_value = (char*) malloc(max_val_len);
     
     if (NULL == kvs_name) {
-        fprintf(stderr, "kvs_name was not successfully initialized\n")
+        fprintf(stderr, "kvs_name was not successfully initialized\n");
         return 4;
     }
     if (NULL == kvs_key) {
-        fprintf(stderr, "kvs_key was not successfully initialized\n")
+        fprintf(stderr, "kvs_key was not successfully initialized\n");
         return 6;
     }
     if (NULL == kvs_value) {
-        fprintf(stderr, "kvs_value was not successfully initialized\n")
+        fprintf(stderr, "kvs_value was not successfully initialized\n");
         return 8;
+    }
+
+    rank = myproc.rank;
+
+    if (PMIX_SUCCESS == PMIx_Get(&proc, PMIX_UNIV_SIZE, NULL, 0, &val)) {
+        size = val->data.size;
+        PMIX_VALUE_RELEASE(val);
+    }
+    else {
+        fprintf(stderr, "Size is not properly initiated\n");
+
+        return rc;
     }
 
     return PMIX_SUCCESS;
@@ -159,15 +170,14 @@ shmem_runtime_fini(void)
     pmix_status_t rc;
 
     if (PMIX_SUCCESS != (rc = PMIx_Finalize(NULL, 0))) {
-        fprintf(stderr, "PMIx_Finalize failed\n")
+        fprintf(stderr, "PMIx_Finalize failed\n");
 
-        PMIX_ERROR_LOG(rc);
         return rc;
     }
-    else{
-        pmix_output_verbose(stderr, pmix_globals.debug_output,
-            "PMIx_Finalize executed successfully");
-    }
+    // else{
+    //     pmix_output_verbose(stderr, pmix_globals.debug_output,
+    //         "PMIx_Finalize executed successfully");
+    // }
 
     return PMIX_SUCCESS;
 }
@@ -186,13 +196,11 @@ shmem_runtime_abort(int exit_code, const char msg[])
 
     if (PMIX_SUCCESS != (rc = PMIx_Abort(exit_code, msg, NULL, 0))) {
         fprintf(stderr, "PMIx_Abort failed");
-
-        PMIX_ERROR_LOG(rc);
     }
-    else{
-        pmix_output_verbose(stderr, pmix_globals.debug_output,
-            "PMIx_Abort executed successfully");
-    }
+    // else{
+    //     pmix_output_verbose(stderr, pmix_globals.debug_output,
+    //         "PMIx_Abort executed successfully");
+    // }
 
     /* PMI_Abort should not return */
     abort();
@@ -218,19 +226,16 @@ shmem_runtime_get_size(void)
 int
 shmem_runtime_exchange(void)
 {
-    // TODO: This should be a PMIx_Fence_nb call but don't know how to
-    // address the last two arguments.
+    pmix_status_t rc;
     if (PMIX_SUCCESS != (rc = PMIx_Fence(NULL, 0, NULL, 0))) {
-        pmix_output_verbose(stderr, pmix_globals.debug_output,
-            "PMIx_Fence failed");
+        fprintf(stderr, "PMIx_Fence failed");
 
-        PMIX_ERROR_LOG(rc);
         return rc;
     }
-    else{
-        pmix_output_verbose(stderr, pmix_globals.debug_output,
-            "PMIx_Fence executed successfully");
-    }
+    // else{
+    //     pmix_output_verbose(stderr, pmix_globals.debug_output,
+    //         "PMIx_Fence executed successfully");
+    // }
 
     return PMIX_SUCCESS;
 }
@@ -247,16 +252,22 @@ shmem_runtime_put(char *key, void *value, size_t valuelen)
     return PMIX_SUCCESS;
 }
 
-//TODO: CONVERT THIS
 int
 shmem_runtime_get(int pe, char *key, void *value, size_t valuelen)
 {
     snprintf(kvs_key, max_key_len, "shmem-%lu-%s", (long unsigned) pe, key);
 
+    pmix_status_t rc;
+    pmix_value_t **val;
+    if (PMIX_SUCCESS != (rc = PMIx_Get(&myproc, key, NULL, 0, &val))) {
+        fprintf(stderr, "PMIx_Get failed");
 
-    if (PMI_SUCCESS != PMI_KVS_Get(kvs_name, kvs_key, kvs_value, max_val_len)) {
-        return 1;
+        return rc;
     }
+    // else{
+    //     pmix_output_verbose(stderr, pmix_globals.debug_output,
+    //         "PMIx_Get executed successfully");
+    // }
 
     if (0 != decode(kvs_value, value, valuelen)) {
         return 2;
@@ -269,5 +280,5 @@ shmem_runtime_get(int pe, char *key, void *value, size_t valuelen)
 void
 shmem_runtime_barrier(void)
 {
-    PMIx_Fence(NULL, 0, NULL, 0)
+    PMIx_Fence(NULL, 0, NULL, 0);
 }
