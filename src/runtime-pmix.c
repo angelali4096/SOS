@@ -33,74 +33,7 @@
 #include "uthash.h"
 
 static pmix_proc_t myproc;
-
-static int rank = -1;
-static int size = 0;
-static char *kvs_name, *kvs_key, *kvs_value;
-static int max_name_len, max_key_len, max_val_len;
-
-#define SINGLETON_KEY_LEN 128
-#define SINGLETON_VAL_LEN 256
-
-typedef struct {
-    char key[SINGLETON_KEY_LEN];
-    char val[SINGLETON_VAL_LEN];
-    UT_hash_handle hh;
-} singleton_kvs_t;
-
-singleton_kvs_t *singleton_kvs = NULL;
-
-static int
-encode(const void *inval, int invallen, char *outval, int outvallen)
-{
-    static unsigned char encodings[] = {
-        '0','1','2','3','4','5','6','7', \
-        '8','9','a','b','c','d','e','f' };
-    int i;
-
-    if (invallen * 2 + 1 > outvallen) {
-        return 1;
-    }
-
-    for (i = 0; i < invallen; i++) {
-        outval[2 * i] = encodings[((unsigned char *)inval)[i] & 0xf];
-        outval[2 * i + 1] = encodings[((unsigned char *)inval)[i] >> 4];
-    }
-
-    outval[invallen * 2] = '\0';
-
-    return 0;
-}
-
-
-static int
-decode(const char *inval, void *outval, int outvallen)
-{
-    int i;
-    char *ret = (char*) outval;
-
-    if (outvallen != strlen(inval) / 2) {
-        return 1;
-    }
-
-    for (i = 0 ; i < outvallen ; ++i) {
-        if (*inval >= '0' && *inval <= '9') {
-            ret[i] = *inval - '0';
-        } else {
-            ret[i] = *inval - 'a' + 10;
-        }
-        inval++;
-        if (*inval >= '0' && *inval <= '9') {
-            ret[i] |= ((*inval - '0') << 4);
-        } else {
-            ret[i] |= ((*inval - 'a' + 10) << 4);
-        }
-        inval++;
-    }
-
-    return 0;
-}
-
+static size_t size;
 
 int
 shmem_runtime_init(void)
@@ -108,16 +41,15 @@ shmem_runtime_init(void)
     printf("HELLO FROM PMIX\n");
 
     pmix_status_t rc;
-    pmix_proc_t proc = myproc;
+    pmix_proc_t proc;
     proc.rank = PMIX_RANK_WILDCARD;
     pmix_value_t *val;
-    pmix_info_t info[1];
 
     int initialized = PMIx_Initialized();
 
     if (!initialized) {
         if (PMIX_SUCCESS != (rc = PMIx_Init(&myproc, NULL, 0))) {
-            
+
             fprintf(stderr, "PMIx_Init failed\n");
             return rc;
         }
@@ -127,31 +59,12 @@ shmem_runtime_init(void)
         // }
     }
 
-    max_key_len = PMIX_MAX_KEYLEN;
-    max_name_len = PMIX_MAX_NSLEN;
-    max_val_len = PMIX_MAX_NSLEN;
+    (void)strncpy(proc.nspace, myproc.nspace, PMIX_MAX_NSLEN);
+    proc.rank = PMIX_RANK_WILDCARD;
 
-    kvs_name = (char*) malloc(max_name_len);
-    kvs_key = (char*) malloc(max_key_len);
-    kvs_value = (char*) malloc(max_val_len);
-    
-    if (NULL == kvs_name) {
-        fprintf(stderr, "kvs_name was not successfully initialized\n");
-        return 4;
-    }
-    if (NULL == kvs_key) {
-        fprintf(stderr, "kvs_key was not successfully initialized\n");
-        return 6;
-    }
-    if (NULL == kvs_value) {
-        fprintf(stderr, "kvs_value was not successfully initialized\n");
-        return 8;
-    }
-
-    rank = myproc.rank;
-
-    if (PMIX_SUCCESS == PMIx_Get(&proc, PMIX_UNIV_SIZE, NULL, 0, &val)) {
-        size = val->data.size;
+    if (PMIX_SUCCESS == (rc = PMIx_Get(&proc, PMIX_JOB_SIZE, NULL, 0, &val))) {
+        fprintf(stderr, "GOT JOB %d %d\n", val->type, (int)val->data.uint32);
+        size = val->data.uint32;
         PMIX_VALUE_RELEASE(val);
     }
     else {
@@ -212,7 +125,7 @@ shmem_runtime_abort(int exit_code, const char msg[])
 int
 shmem_runtime_get_rank(void)
 {
-    return rank;
+    return myproc.rank;
 }
 
 
@@ -227,53 +140,77 @@ int
 shmem_runtime_exchange(void)
 {
     pmix_status_t rc;
-    if (PMIX_SUCCESS != (rc = PMIx_Fence(NULL, 0, NULL, 0))) {
-        fprintf(stderr, "PMIx_Fence failed");
+    pmix_info_t info;
+    bool wantit=true;
 
+    /* commit any values we "put" */
+    if (PMIX_SUCCESS != (rc = PMIx_Commit())) {
+        fprintf(stderr, "PMIx_Commit failed\n");
         return rc;
     }
-    // else{
-    //     pmix_output_verbose(stderr, pmix_globals.debug_output,
-    //         "PMIx_Fence executed successfully");
-    // }
 
-    return PMIX_SUCCESS;
+    /* execute a fence, directing that all info be exchanged */
+    PMIX_INFO_CONSTRUCT(&info);
+    PMIX_INFO_LOAD(&info, PMIX_COLLECT_DATA, &wantit, PMIX_BOOL);
+    if (PMIX_SUCCESS != (rc = PMIx_Fence(NULL, 0, &info, 1))) {
+        fprintf(stderr, "PMIx_Fence failed");
+    }
+    PMIX_INFO_DESTRUCT(&info);
+
+    return rc;
 }
 
 
 int
 shmem_runtime_put(char *key, void *value, size_t valuelen)
 {
-    snprintf(kvs_key, max_key_len, "shmem-%lu-%s", (long unsigned) rank, key);
-    if (0 != encode(value, valuelen, kvs_value, max_val_len)) {
-        return 1;
-    }
+    pmix_value_t val;
+    pmix_status_t rc;
 
-    return PMIX_SUCCESS;
+    PMIX_VALUE_CONSTRUCT(&val);
+    val.type = PMIX_BYTE_OBJECT;
+    val.data.bo.bytes = value;
+    val.data.bo.size = valuelen;
+
+    rc = PMIx_Put(PMIX_GLOBAL, key, &val);
+    val.data.bo.bytes = NULL;  // protect the data
+    val.data.bo.size = 0;
+    PMIX_VALUE_DESTRUCT(&val);
+
+    return rc;
 }
 
+/* I'm assuming you malloc'd a region and are giving me its length */
 int
 shmem_runtime_get(int pe, char *key, void *value, size_t valuelen)
 {
-    snprintf(kvs_key, max_key_len, "shmem-%lu-%s", (long unsigned) pe, key);
-
+    pmix_proc_t proc;
+    pmix_value_t *val;
     pmix_status_t rc;
-    pmix_value_t **val;
-    if (PMIX_SUCCESS != (rc = PMIx_Get(&myproc, key, NULL, 0, &val))) {
-        fprintf(stderr, "PMIx_Get failed");
 
-        return rc;
+    /* ensure the region is zero'd out */
+    memset(value, 0, valuelen);
+
+    /* setup the ID of the proc whose info we are getting */
+    (void)strncpy(proc.nspace, myproc.nspace, PMIX_MAX_NSLEN);
+    proc.rank = pe;
+
+    rc = PMIx_Get(&proc, key, NULL, 0, &val);
+
+    if (PMIX_SUCCESS == rc) {
+        if (NULL != val) {
+            /* see if the data fits into the given region */
+            if (valuelen < val->data.bo.size) {
+                PMIX_VALUE_RELEASE(val);
+                return PMIX_ERROR;
+            }
+            /* copy the results across */
+            memcpy(value, val->data.bo.bytes, val->data.bo.size);
+            PMIX_VALUE_RELEASE(val);
+        }
     }
-    // else{
-    //     pmix_output_verbose(stderr, pmix_globals.debug_output,
-    //         "PMIx_Get executed successfully");
-    // }
 
-    if (0 != decode(kvs_value, value, valuelen)) {
-        return 2;
-    }
-
-    return 0;
+    return rc;
 }
 
 
