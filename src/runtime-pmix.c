@@ -63,7 +63,6 @@ shmem_runtime_init(void)
     proc.rank = PMIX_RANK_WILDCARD;
 
     if (PMIX_SUCCESS == (rc = PMIx_Get(&proc, PMIX_JOB_SIZE, NULL, 0, &val))) {
-        fprintf(stderr, "GOT JOB %d %d\n", val->type, (int)val->data.uint32);
         size = val->data.uint32;
         PMIX_VALUE_RELEASE(val);
     }
