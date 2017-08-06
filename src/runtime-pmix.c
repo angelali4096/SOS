@@ -134,6 +134,13 @@ shmem_runtime_get_size(void)
     return size;
 }
 
+static void opcbfunc(pmix_status_t status, void *cbdata)
+{
+    bool *active = (bool*)cbdata;
+
+    fprintf(stderr, "%s:%d completed fence_nb", myproc.nspace, myproc.rank);
+    *active = false;
+}
 
 int
 shmem_runtime_exchange(void)
@@ -141,6 +148,8 @@ shmem_runtime_exchange(void)
     pmix_status_t rc;
     pmix_info_t info;
     bool wantit=true;
+    pmix_proc_t proc;
+    bool active;
 
     /* commit any values we "put" */
     if (PMIX_SUCCESS != (rc = PMIx_Commit())) {
@@ -149,9 +158,14 @@ shmem_runtime_exchange(void)
     }
 
     /* execute a fence, directing that all info be exchanged */
+    PMIX_PROC_CONSTRUCT(&proc);
+    (void)strncpy(proc.nspace, myproc.nspace, PMIX_MAX_NSLEN);
+    proc.rank = PMIX_RANK_WILDCARD;
+    active = true;
+
     PMIX_INFO_CONSTRUCT(&info);
     PMIX_INFO_LOAD(&info, PMIX_COLLECT_DATA, &wantit, PMIX_BOOL);
-    if (PMIX_SUCCESS != (rc = PMIx_Fence(NULL, 0, &info, 1))) {
+    if (PMIX_SUCCESS != (rc = PMIx_Fence_nb(NULL, 0, &info, 1, opcbfunc, &active))) {
         fprintf(stderr, "PMIx_Fence failed");
     }
     PMIX_INFO_DESTRUCT(&info);
