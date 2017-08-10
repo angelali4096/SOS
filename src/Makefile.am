@@ -116,7 +116,9 @@ endif
 if USE_PMI2
 libsma_la_SOURCES += \
 	runtime-pmi2.c
-else
+endif
+
+if USE_PMIX
 libsma_la_SOURCES += \
 	runtime-pmix.c
 endif
