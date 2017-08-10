@@ -382,7 +382,9 @@ shmem_internal_init(int tl_requested, int *tl_provided)
               shmem_internal_data_base, shmem_internal_data_length);
 
     /* finish up */
+#ifndef USE_PMIX
     shmem_runtime_barrier();
+#endif
     return;
 
  cleanup:
