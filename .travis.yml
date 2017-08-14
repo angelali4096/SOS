@@ -205,7 +205,7 @@ script:
     - cd ompi-build
     - export PATH=$TRAVIS_SRC/ompi/install/bin:$BASE_PATH
     - ../configure --prefix=$PWD/install --with-ofi=$TRAVIS_INSTALL/libfabric --with-pmix=$TRAVIS_SRC/pmix/install
-    - make $TRAVIS_PAR MAKE
+    - make $TRAVIS_PAR_MAKE
     - make $TRAVIS_PAR_MAKE check TESTS=
     - make install
     ###
