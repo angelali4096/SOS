@@ -124,25 +124,33 @@ before_install:
     - cd $TRAVIS_SRC
     - git clone --depth 10 https://github.com/ParRes/Kernels.git PRK
     - echo -e "SHMEMCC=oshcc -std=c99\nSHMEMTOP=$$TRAVIS_INSTALL\n" > PRK/common/make.defs
+    ## Build Libevent
+    - cd $TRAVIS_SRC
+    - wget https://github.com/libevent/libevent/releases/download/release-2.0.22-stable/libevent-2.0.22-stable.tar.gz
+    - tar -xzvf libevent-2.0.22-stable.tar.gz
+    - cd libevent-2.0.22-stable
+    - ./autogen.sh
+    - ./configure --prefix=$PWD/install
+    - make clean all install
     ## Build PMIx
     - cd $TRAVIS_SRC
     - git clone --depth 10 --single-branch -b v2.0 https://github.com/pmix/pmix pmix
     - cd pmix
     - ./autogen.pl
-    - ./configure --prefix=$PWD/install --with-libevent=$TRAVIS_INSTALL/libev --with-devel-headers --disable-visibility && make clean all install
+    - ./configure --prefix=$PWD/install --with-libevent=$TRAVIS_SRC/libevent-2.0.22-stable/install --with-devel-headers --disable-visibility && make clean all install
     ## Build Open MPI
     - cd $TRAVIS_SRC
-    - git clone --depth 10 --single-branch -b v3.0.x https://github.com/ompi-mpi/ompi.git ompi
+    - git clone --depth 10 --single-branch -b v3.0.x https://github.com/open-mpi/ompi.git ompi
     - cd ompi
     - ./autogen.pl
-    - ./configure --prefix=$PWD/install --with-libevent=$TRAVIS_INSTALL/libev --with-pmix=$TRAVIS_SRC/pmix/install && make clean all install
+    - ./configure --prefix=$PWD/install --with-libevent=$TRAVIS_SRC/libevent-2.0.22-stable/install --with-pmix=$TRAVIS_SRC/pmix/install && make clean all install
 
 install:
     - cd $SOS_SRC
     - ./autogen.sh
 
 script:
-    # - export BASE_PATH=$PATH
+    - export BASE_PATH=$PATH
     ###
     ### Build without transport
     ###
@@ -180,15 +188,15 @@ script:
     ###
     ### Build and check OFI
     ###
-    - cd $SOS_SRC
-    - mkdir ofi-build
-    - cd ofi-build
-    - export PATH=$TRAVIS_INSTALL/hydra/bin:$BASE_PATH
-    - ../configure --with-ofi=$TRAVIS_INSTALL/libfabric/ --prefix=$TRAVIS_INSTALL/sandia-shmem-ofi $SOS_GLOBAL_BUILD_OPTS $SOS_BUILD_OPTS
-    - make $TRAVIS_PAR_MAKE
-    - make $TRAVIS_PAR_MAKE check TESTS=
-    - make VERBOSE=1 TEST_RUNNER="mpiexec.hydra -np 2" check
-    - make install
+    #- cd $SOS_SRC
+    #- mkdir ofi-build
+    #- cd ofi-build
+    #- export PATH=$TRAVIS_INSTALL/hydra/bin:$BASE_PATH
+    #- ../configure --with-ofi=$TRAVIS_INSTALL/libfabric/ --prefix=$TRAVIS_INSTALL/sandia-shmem-ofi $SOS_GLOBAL_BUILD_OPTS $SOS_BUILD_OPTS
+    #- make $TRAVIS_PAR_MAKE
+    #- make $TRAVIS_PAR_MAKE check TESTS=
+    #- make VERBOSE=1 TEST_RUNNER="mpiexec.hydra -np 2" check
+    #- make install
     ###
     ### Build and check with ORTE (Open MPI's launcher)
     ###
