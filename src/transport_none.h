@@ -1,10 +1,11 @@
+
 /* -*- C -*-
  *
  * Copyright 2011 Sandia Corporation. Under the terms of Contract
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -17,64 +18,36 @@
 #define TRANSPORT_NONE_H
 
 #include "shmem_internal.h"
+#include "transport.h"
 
-/* Datatypes */
-#define SHM_INTERNAL_FLOAT           -1
-#define SHM_INTERNAL_DOUBLE          -2
-#define SHM_INTERNAL_LONG_DOUBLE     -3
-#define SHM_INTERNAL_FLOAT_COMPLEX   -4
-#define SHM_INTERNAL_DOUBLE_COMPLEX  -5
-#define SHM_INTERNAL_SIGNED_BYTE     -6
-#define SHM_INTERNAL_INT8            -7
-#define SHM_INTERNAL_INT16           -8
-#define SHM_INTERNAL_INT32           -9
-#define SHM_INTERNAL_INT64           -10
-#define SHM_INTERNAL_SHORT           DTYPE_SHORT
-#define SHM_INTERNAL_INT             DTYPE_INT
-#define SHM_INTERNAL_LONG            DTYPE_LONG
-#define SHM_INTERNAL_LONG_LONG       DTYPE_LONG_LONG
-#define SHM_INTERNAL_FORTRAN_INTEGER DTYPE_FORTRAN_INTEGER
-#define SHM_INTERNAL_UINT            DTYPE_UNSIGNED_INT
-#define SHM_INTERNAL_ULONG           DTYPE_UNSIGNED_LONG
-#define SHM_INTERNAL_ULONG_LONG      DTYPE_UNSIGNED_LONG_LONG
-#define SHM_INTERNAL_UINT32          -13
-#define SHM_INTERNAL_UINT64          -14
 
 /* Operations */
-#define SHM_INTERNAL_BAND            -1
-#define SHM_INTERNAL_BOR             -2
-#define SHM_INTERNAL_BXOR            -3
-#define SHM_INTERNAL_MIN             -4
-#define SHM_INTERNAL_MAX             -5
-#define SHM_INTERNAL_SUM             -6
-#define SHM_INTERNAL_PROD            -7
+enum shm_internal_op_t {
+    SHM_INTERNAL_BAND,
+    SHM_INTERNAL_BOR,
+    SHM_INTERNAL_BXOR,
+    SHM_INTERNAL_MIN,
+    SHM_INTERNAL_MAX,
+    SHM_INTERNAL_SUM,
+    SHM_INTERNAL_PROD
+};
 
-typedef int shm_internal_datatype_t;
-typedef int shm_internal_op_t;
+typedef enum shm_internal_op_t shm_internal_op_t;
 typedef int shmem_transport_ct_t;
 
-static inline
-int
-shmem_transport_init(long eager_size)
-{
-    return 0;
-}
+struct shmem_transport_ctx_t {
+    long options;
+    struct shmem_internal_team_t *team;
+};
+typedef struct shmem_transport_ctx_t shmem_transport_ctx_t;
+
+int shmem_transport_init(void);
 
 static inline
 int
 shmem_transport_startup(void)
 {
     return 0;
-}
-
-/* Print transport info, including settings of environment variables and other
- * parameters.  Called when SMA_INFO is set.
- */
-static inline
-void
-shmem_transport_print_info(void)
-{
-    return;
 }
 
 static inline
@@ -85,29 +58,68 @@ shmem_transport_fini(void)
 }
 
 static inline
+void
+shmem_transport_probe(void)
+{
+    return;
+}
+
+static inline
 int
-shmem_transport_quiet(void)
+shmem_transport_ctx_create(struct shmem_internal_team_t *team, long options, shmem_transport_ctx_t **ctx)
+{
+    if (team == SHMEMX_TEAM_INVALID)
+        return 1;
+
+    *ctx = malloc(sizeof(shmem_transport_ctx_t));
+
+    if (*ctx == NULL)
+        return 1;
+
+    (*ctx)->team = team;
+    (*ctx)->options = 0;
+
+    return 0;
+}
+
+static inline
+void
+shmem_transport_ctx_destroy(shmem_transport_ctx_t *ctx)
+{
+    if (ctx == SHMEMX_CTX_INVALID)
+        return;
+    else if (ctx == (shmem_transport_ctx_t *) SHMEM_CTX_DEFAULT)
+        RAISE_ERROR_STR("Cannot destroy SHMEM_CTX_DEFAULT");
+    else
+        free(ctx);
+
+    return;
+}
+
+static inline
+int
+shmem_transport_quiet(shmem_transport_ctx_t* ctx)
 {
     return 0;
 }
 
 static inline
 int
-shmem_transport_fence(void)
+shmem_transport_fence(shmem_transport_ctx_t* ctx)
 {
     return 0;
 }
 
 static inline
 void
-shmem_transport_put_small(void *target, const void *source, size_t len, int pe)
+shmem_transport_put_scalar(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len, int pe)
 {
     RAISE_ERROR_STR("No path to peer");
 }
 
 static inline
 void
-shmem_transport_put_nb(void *target, const void *source, size_t len,
+shmem_transport_put_nb(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
                        int pe, long *completion)
 {
     RAISE_ERROR_STR("No path to peer");
@@ -115,14 +127,22 @@ shmem_transport_put_nb(void *target, const void *source, size_t len,
 
 static inline
 void
-shmem_transport_put_wait(long *completion)
+shmem_transport_put_signal_nbi(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
+                               uint64_t *sig_addr, uint64_t signal, int sig_op, int pe)
 {
     RAISE_ERROR_STR("No path to peer");
 }
 
 static inline
 void
-shmem_transport_put_nbi(void *target, const void *source, size_t len,
+shmem_transport_put_wait(shmem_transport_ctx_t* ctx, long *completion)
+{
+    /* No op */
+}
+
+static inline
+void
+shmem_transport_put_nbi(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
                        int pe)
 {
     RAISE_ERROR_STR("No path to peer");
@@ -130,22 +150,22 @@ shmem_transport_put_nbi(void *target, const void *source, size_t len,
 
 static inline
 void
-shmem_transport_get(void *target, const void *source, size_t len, int pe)
+shmem_transport_get(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len, int pe)
 {
     RAISE_ERROR_STR("No path to peer");
 }
 
 static inline
 void
-shmem_transport_get_wait(void)
+shmem_transport_get_wait(shmem_transport_ctx_t* ctx)
 {
-    RAISE_ERROR_STR("No path to peer");
+    /* Nop */
 }
 
 
 static inline
 void
-shmem_transport_swap(void *target, const void *source, void *dest,
+shmem_transport_swap(shmem_transport_ctx_t* ctx, void *target, const void *source, void *dest,
                      size_t len, int pe, shm_internal_datatype_t datatype)
 {
     RAISE_ERROR_STR("No path to peer");
@@ -153,7 +173,15 @@ shmem_transport_swap(void *target, const void *source, void *dest,
 
 static inline
 void
-shmem_transport_cswap(void *target, const void *source, void *dest,
+shmem_transport_swap_nbi(shmem_transport_ctx_t* ctx, void *target, const void *source, void *dest,
+                         size_t len, int pe, shm_internal_datatype_t datatype)
+{
+    RAISE_ERROR_STR("No path to peer");
+}
+
+static inline
+void
+shmem_transport_cswap(shmem_transport_ctx_t* ctx, void *target, const void *source, void *dest,
                       const void *operand, size_t len, int pe,
                       shm_internal_datatype_t datatype)
 {
@@ -162,7 +190,16 @@ shmem_transport_cswap(void *target, const void *source, void *dest,
 
 static inline
 void
-shmem_transport_mswap(void *target, const void *source, void *dest,
+shmem_transport_cswap_nbi(shmem_transport_ctx_t* ctx, void *target, const void *source, void *dest,
+                          const void *operand, size_t len, int pe,
+                          shm_internal_datatype_t datatype)
+{
+    RAISE_ERROR_STR("No path to peer");
+}
+
+static inline
+void
+shmem_transport_mswap(shmem_transport_ctx_t* ctx, void *target, const void *source, void *dest,
                       const void *mask, size_t len, int pe,
                       shm_internal_datatype_t datatype)
 {
@@ -171,7 +208,23 @@ shmem_transport_mswap(void *target, const void *source, void *dest,
 
 static inline
 void
-shmem_transport_atomic_small(void *target, const void *source, size_t len,
+shmem_transport_atomic(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
+                       int pe, shm_internal_op_t op, shm_internal_datatype_t datatype)
+{
+    RAISE_ERROR_STR("No path to peer");
+}
+
+static inline
+void
+shmem_transport_atomicv(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
+                        int pe, shm_internal_op_t op, shm_internal_datatype_t datatype, long *completion)
+{
+    RAISE_ERROR_STR("No path to peer");
+}
+
+static inline
+void
+shmem_transport_fetch_atomic(shmem_transport_ctx_t* ctx, void *target, const void *source, void *dest, size_t len,
                              int pe, shm_internal_op_t op, shm_internal_datatype_t datatype)
 {
     RAISE_ERROR_STR("No path to peer");
@@ -179,24 +232,15 @@ shmem_transport_atomic_small(void *target, const void *source, size_t len,
 
 static inline
 void
-shmem_transport_atomic_nb(void *target, const void *source, size_t len,
-                          int pe, shm_internal_op_t op, shm_internal_datatype_t datatype,
-                          long *completion)
+shmem_transport_fetch_atomic_nbi(shmem_transport_ctx_t* ctx, void *target, const void *source, void *dest, size_t len,
+                                 int pe, shm_internal_op_t op, shm_internal_datatype_t datatype)
 {
     RAISE_ERROR_STR("No path to peer");
 }
 
 static inline
 void
-shmem_transport_fetch_atomic(void *target, const void *source, void *dest, size_t len,
-                             int pe, shm_internal_op_t op, shm_internal_datatype_t datatype)
-{
-    RAISE_ERROR_STR("No path to peer");
-}
-
-static inline
-void
-shmem_transport_atomic_fetch(void *target, const void *source, size_t len,
+shmem_transport_atomic_fetch(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
                              int pe, shm_internal_datatype_t datatype)
 {
     RAISE_ERROR_STR("No path to peer");
@@ -204,7 +248,7 @@ shmem_transport_atomic_fetch(void *target, const void *source, size_t len,
 
 static inline
 void
-shmem_transport_atomic_set(void *target, const void *source, size_t len,
+shmem_transport_atomic_set(shmem_transport_ctx_t* ctx, void *target, const void *source, size_t len,
                              int pe, shm_internal_datatype_t datatype)
 {
     RAISE_ERROR_STR("No path to peer");
@@ -282,6 +326,48 @@ static inline
 void shmem_transport_received_cntr_wait(uint64_t ge_val)
 {
     RAISE_ERROR_STR("No remote peers");
+}
+
+static inline
+void shmem_transport_syncmem(void)
+{
+    return;
+}
+
+static inline
+uint64_t shmem_transport_pcntr_get_issued_write(shmem_transport_ctx_t *ctx)
+{
+    return 0;
+}
+
+static inline
+uint64_t shmem_transport_pcntr_get_issued_read(shmem_transport_ctx_t *ctx)
+{
+    return 0;
+}
+
+static inline
+uint64_t shmem_transport_pcntr_get_completed_write(shmem_transport_ctx_t *ctx)
+{
+    return 0;
+}
+
+static inline
+uint64_t shmem_transport_pcntr_get_completed_read(shmem_transport_ctx_t *ctx)
+{
+    return 0;
+}
+
+static inline
+uint64_t shmem_transport_pcntr_get_completed_target(void)
+{
+    return 0;
+}
+
+static inline
+void shmem_transport_pcntr_get_all(shmem_transport_ctx_t *ctx, shmemx_pcntr_t *pcntr)
+{
+    return;
 }
 
 #endif /* TRANSPORT_NONE_H */

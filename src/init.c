@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -15,37 +15,48 @@
 
 #include "config.h"
 
+#ifdef HAVE_SCHED_GETAFFINITY
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <sched.h>
+#endif
+
 #include <stdlib.h>
 #include <sys/time.h>
 #include <sys/param.h>
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
-#include <errno.h>
-#include <unistd.h>
 
 #define SHMEM_INTERNAL_INCLUDE
 #include "shmem.h"
-#include "shmemx.h"
 #include "shmem_internal.h"
 #include "shmem_collectives.h"
 #include "shmem_comm.h"
 #include "runtime.h"
 #include "build_info.h"
+#include "shmem_team.h"
+
+#if defined(ENABLE_REMOTE_VIRTUAL_ADDRESSING) && defined(__linux__)
+#include <sys/personality.h>
+#endif
 
 #ifdef __APPLE__
 #include <mach-o/getsect.h>
 #else
-extern char data_start;
-extern char end;
+/* Declare data_start and end as weak to avoid a linker error if the symbols
+ * are not present.  During initialization we check if the symbols exist. */
+#pragma weak __data_start
+#pragma weak _end
+extern int __data_start;
+extern int _end;
 #endif
 
 void *shmem_internal_heap_base = NULL;
 long shmem_internal_heap_length = 0;
 void *shmem_internal_data_base = NULL;
 long shmem_internal_data_length = 0;
-int shmem_internal_heap_use_huge_pages = 0;
-long shmem_internal_heap_huge_page_size = 0;
 
 int shmem_internal_my_pe = -1;
 int shmem_internal_num_pes = -1;
@@ -55,22 +66,39 @@ int shmem_internal_initialized_with_start_pes = 0;
 int shmem_internal_global_exit_called = 0;
 
 int shmem_internal_thread_level;
-int shmem_internal_debug = 0;
-int shmem_internal_trap_on_abort = 0;
+
+unsigned int shmem_internal_rand_seed;
 
 #ifdef ENABLE_THREADS
 shmem_internal_mutex_t shmem_internal_mutex_alloc;
+shmem_internal_mutex_t shmem_internal_mutex_rand_r;
 #endif
 
-#ifdef USE_ON_NODE_COMMS
-char *shmem_internal_location_array = NULL;
+static char *shmem_internal_thread_level_str[4] = { "SINGLE", "FUNNELED",
+                                                    "SERIALIZED", "MULTIPLE" };
+
+static void
+shmem_internal_randr_init(void)
+{
+    shmem_internal_rand_seed = shmem_internal_my_pe;
+
+#ifdef ENABLE_THREADS
+    SHMEM_MUTEX_INIT(shmem_internal_mutex_rand_r);
 #endif
 
-#ifdef MAXHOSTNAMELEN
-static char shmem_internal_my_hostname[MAXHOSTNAMELEN];
-#else
-static char shmem_internal_my_hostname[HOST_NAME_MAX];
+    return;
+}
+
+static void
+shmem_internal_randr_fini(void)
+{
+
+#ifdef ENABLE_THREADS
+    SHMEM_MUTEX_DESTROY(shmem_internal_mutex_rand_r);
 #endif
+
+    return;
+}
 
 
 static void
@@ -84,16 +112,16 @@ shmem_internal_shutdown(void)
     shmem_internal_barrier_all();
 
     shmem_internal_finalized = 1;
+
+    shmem_internal_team_fini();
+
     shmem_transport_fini();
 
-#ifdef USE_XPMEM
-    shmem_transport_xpmem_fini();
-#endif
-#ifdef USE_CMA
-    shmem_transport_cma_fini();
-#endif
+    shmem_shr_transport_fini();
 
     SHMEM_MUTEX_DESTROY(shmem_internal_mutex_alloc);
+
+    shmem_internal_randr_fini();
 
     shmem_internal_symmetric_fini();
     shmem_runtime_fini();
@@ -116,29 +144,30 @@ shmem_internal_shutdown_atexit(void)
 void
 shmem_internal_start_pes(int npes)
 {
-    int tl_provided;
+    int ret, tl_provided;
 
     shmem_internal_initialized_with_start_pes = 1;
-    shmem_internal_init(SHMEMX_THREAD_SINGLE, &tl_provided);
+    ret = shmem_internal_init(SHMEM_THREAD_SINGLE, &tl_provided);
+
+    if (ret) abort();
 }
 
 
-void
+int
 shmem_internal_init(int tl_requested, int *tl_provided)
 {
     int ret;
-    int radix = -1, crossover = -1;
-    long heap_size, eager_size;
-    int heap_use_malloc = 0;
 
     int runtime_initialized   = 0;
     int transport_initialized = 0;
-#ifdef USE_XPMEM
-    int xpmem_initialized     = 0;
-#endif
-#ifdef USE_CMA
-    int cma_initialized       = 0;
-#endif
+    int shr_initialized       = 0;
+    int randr_initialized     = 0;
+    int teams_initialized     = 0;
+    int enable_node_ranks     = 0;
+
+    /* Parse environment variables into shmem_internal_params */
+    ret = shmem_internal_parse_env();
+    if (ret) return ret;
 
     /* set up threading */
     SHMEM_MUTEX_INIT(shmem_internal_mutex_alloc);
@@ -146,11 +175,20 @@ shmem_internal_init(int tl_requested, int *tl_provided)
     shmem_internal_thread_level = tl_requested;
     *tl_provided = tl_requested;
 #else
-    shmem_internal_thread_level = SHMEMX_THREAD_SINGLE;
-    *tl_provided = SHMEMX_THREAD_SINGLE;
+    shmem_internal_thread_level = SHMEM_THREAD_SINGLE;
+    *tl_provided = SHMEM_THREAD_SINGLE;
 #endif
 
-    ret = shmem_runtime_init();
+#if USE_ON_NODE_COMMS
+    enable_node_ranks = 1;
+#elif USE_OFI
+    enable_node_ranks = (shmem_internal_params.OFI_STX_AUTO) ? 1 : 0;
+#endif
+
+    if (!shmem_internal_params.TEAM_SHARED_ONLY_SELF)
+        enable_node_ranks = 1;
+
+    ret = shmem_runtime_init(enable_node_ranks);
     if (0 != ret) {
         fprintf(stderr, "ERROR: runtime init failed: %d\n", ret);
         goto cleanup;
@@ -166,80 +204,176 @@ shmem_internal_init(int tl_requested, int *tl_provided)
         goto cleanup;
     }
 
-    /* Process environment variables */
-    radix = shmem_util_getenv_long("COLL_RADIX", 0, 4);
-    crossover = shmem_util_getenv_long("COLL_CROSSOVER", 0, 4);
-    heap_size = shmem_util_getenv_long("SYMMETRIC_SIZE", 1, 512 * 1024 * 1024);
-    eager_size = shmem_util_getenv_long("BOUNCE_SIZE", 1,
-                            /* Disable by default in MULTIPLE because of threading overheads */
-                            shmem_internal_thread_level == SHMEMX_THREAD_MULTIPLE ?
-                            0 : DEFAULT_BOUNCE_SIZE);
-    heap_use_malloc = shmem_util_getenv_long("SYMMETRIC_HEAP_USE_MALLOC", 0, 0);
-    shmem_internal_debug = (NULL != shmem_util_getenv_str("DEBUG")) ? 1 : 0;
-    shmem_internal_trap_on_abort = (NULL != shmem_util_getenv_str("TRAP_ON_ABORT")) ? 1 : 0;
-
-    /* huge page support only on Linux for now, default is to use 2MB large pages */
-#ifdef __linux__
-    if (heap_use_malloc == 0) {
-        shmem_internal_heap_use_huge_pages =
-            (shmem_util_getenv_str("SYMMETRIC_HEAP_USE_HUGE_PAGES") != NULL) ? 1 : 0;
-        shmem_internal_heap_huge_page_size =
-            shmem_util_getenv_long("SYMMETRIC_HEAP_PAGE_SIZE", 1, 2 * 1024 * 1024);
+    /* Unless the user asked for it, disable bounce buffering in MULTIPLE
+     * because of threading overheads */
+    if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE &&
+        !shmem_internal_params.BOUNCE_SIZE_provided) {
+        shmem_internal_params.BOUNCE_SIZE = 0;
     }
-#endif
 
-#ifdef USE_CMA
-    shmem_transport_cma_put_max = shmem_util_getenv_long("CMA_PUT_MAX", 1, 8*1024);
-    shmem_transport_cma_get_max = shmem_util_getenv_long("CMA_GET_MAX", 1, 16*1024);
+    /* Print library parameters */
+    if (0 == shmem_internal_my_pe) {
+        if (shmem_internal_params.VERSION || shmem_internal_params.INFO ||
+            shmem_internal_params.DEBUG)
+        {
+            printf(PACKAGE_STRING "\n");
+        }
+
+        if (shmem_internal_params.INFO) {
+            shmem_internal_print_env();
+            printf("\n");
+        }
+
+        if (shmem_internal_params.DEBUG) {
+            char *wrapped_configure_args = shmem_util_wrap(SOS_CONFIGURE_ARGS, 60,
+                                                           "                        ");
+            char *wrapped_build_cflags   = shmem_util_wrap(SOS_BUILD_CFLAGS, 60,
+                                                           "                        ");
+
+            printf("Build information:\n");
+#ifdef SOS_GIT_VERSION
+            printf("%-23s %s\n", "  Git Version", SOS_GIT_VERSION);
 #endif
+            printf("%-23s %s\n", "  Configure Args", wrapped_configure_args);
+            printf("%-23s %s\n", "  Build Date", SOS_BUILD_DATE);
+            printf("%-23s %s\n", "  Build CC", SOS_BUILD_CC);
+            printf("%-23s %s\n", "  Build CFLAGS", wrapped_build_cflags);
+            printf("\n");
+
+            free(wrapped_configure_args);
+            free(wrapped_build_cflags);
+        }
+
+        fflush(NULL);
+    }
+
+    /* ASLR is an OS security feature that randomizes the address map of each
+     * process.  Remote virtual addressing assumes that symmetric addresses are
+     * identical across processes.  ASLR can violate this assumption.
+     *
+     * However, ASLR does not always preclude identical symmetric addresses
+     * across PEs.  Linking the application with -no-pie can cause the OS to
+     * load the data segment at symmetric addresses.  The heap is mmap'd
+     * relative to the location of the data segment and will also be symmetric.
+     * Thus, we allow advanced users to disable this check. */
+#if defined(ENABLE_REMOTE_VIRTUAL_ADDRESSING) && defined(__linux__) && !defined(DISABLE_ASLR_CHECK_AC)
+    if (!shmem_internal_params.DISABLE_ASLR_CHECK) {
+        FILE *aslr = fopen("/proc/sys/kernel/randomize_va_space", "r");
+        if (aslr) {
+            int aslr_status = fgetc(aslr);
+            if (aslr_status != EOF && aslr_status != '0') {
+                int persona = personality(0xffffffff);
+                /* Check if ASLR was disabled with setarch */
+                if (! (persona & ADDR_NO_RANDOMIZE)) {
+                    RAISE_ERROR_MSG("Remote virtual addressing is enabled; however, address space layout randomization\n"
+                                    RAISE_PE_PREFIX
+                                    "is present.  Disable ASLR or rebuild without '--enable-remote-virtual-addressing'.\n"
+                                    RAISE_PE_PREFIX
+                                    "This error message can be disabled by setting SHMEM_DISABLE_ASLR_CHECK or building\n"
+                                    RAISE_PE_PREFIX
+                                    "with --disable-aslr-check.\n",
+                                    shmem_internal_my_pe, shmem_internal_my_pe, shmem_internal_my_pe);
+                }
+            }
+            fclose(aslr);
+        }
+    }
+#endif /* ENABLE_REMOTE_VIRTUAL_ADDRESSING */
+
 
     /* Find symmetric data */
 #ifdef __APPLE__
     shmem_internal_data_base = (void*) get_etext();
     shmem_internal_data_length = get_end() - get_etext();
 #else
-    shmem_internal_data_base = &data_start;
-    shmem_internal_data_length = (unsigned long) &end  - (unsigned long) &data_start;
-#endif
+    /* We declare data_start and end as weak symbols, which allows them to
+     * remain unbound after dynamic linking.  This is needed for compatibility
+     * with binaries (e.g. forked processes or tools) that are used with
+     * OpenSHMEM programs but don't themselves use OpenSHMEM.  Such binaries
+     * need not be compiled with the OpenSHMEM library and, as a result, will
+     * not have exposed these symbols for dynamic linking.  However, if the
+     * OpenSHMEM library has a strong dependence on the symbols, the dynamic
+     * linker will flag an error when loading the binary.
+     *
+     * If the data_start and end symbols are unbound, the dynamic linker will
+     * assign them an lvalue of 0.  Here, we check that the binary that
+     * initializes OpenSHMEM has exposed these symbols, enabling the library to
+     * locate its symmetric data segment. */
 
-#ifdef USE_ON_NODE_COMMS
-    shmem_internal_location_array = malloc(sizeof(char) * shmem_internal_num_pes);
-    if (NULL == shmem_internal_location_array) goto cleanup;
+    if (&__data_start == (int*) 0 || &_end == (int*) 0)
+        RETURN_ERROR_MSG("Unable to locate symmetric data segment (%p, %p)\n",
+                         (void*) &__data_start, (void*) &_end);
 
-    memset(shmem_internal_location_array, -1, shmem_internal_num_pes);
+    shmem_internal_data_base = (void*) &__data_start;
+    shmem_internal_data_length = (long) ((char*) &_end - (char*) &__data_start);
 #endif
 
     /* create symmetric heap */
-    ret = shmem_internal_symmetric_init(heap_size, heap_use_malloc);
+    ret = shmem_internal_symmetric_init();
     if (0 != ret) {
         RETURN_ERROR_MSG("Symmetric heap initialization failed (%d)\n", ret);
         goto cleanup;
     }
 
+    DEBUG_MSG("Thread level=%s, Num. PEs=%d\n"
+              RAISE_PE_PREFIX
+              "Sym. heap=%p len=%ld -- data=%p len=%ld\n",
+              shmem_internal_thread_level_str[shmem_internal_thread_level],
+              shmem_internal_num_pes,
+              shmem_internal_my_pe,
+              shmem_internal_heap_base, shmem_internal_heap_length,
+              shmem_internal_data_base, shmem_internal_data_length);
+
+#ifdef HAVE_SCHED_GETAFFINITY
+    if (shmem_internal_params.DEBUG) {
+        cpu_set_t my_set;
+
+        CPU_ZERO(&my_set);
+
+        ret = sched_getaffinity(0, sizeof(my_set), &my_set);
+
+        if (ret == 0) {
+            char cores_str[SHMEM_INTERNAL_DIAG_STRLEN];
+            char *cores_str_wrap;
+            int core_count = 0;
+
+            for (int i = 0; i < CPU_SETSIZE; i++) {
+                if (CPU_ISSET(i, &my_set))
+                    core_count++;
+            }
+
+            size_t off = snprintf(cores_str, sizeof(cores_str),
+                                  "Affinity to %d processor cores: { ", core_count);
+
+            for (int i = 0; i < CPU_SETSIZE; i++) {
+                if (CPU_ISSET(i, &my_set)) {
+                    off += snprintf(cores_str+off, sizeof(cores_str)-off, "%d ", i);
+                    if (off >= sizeof(cores_str)) break;
+                }
+            }
+            if (off < sizeof(cores_str)-1)
+                off += snprintf(cores_str+off, sizeof(cores_str)-off, "}");
+
+            cores_str_wrap = shmem_util_wrap(cores_str, SHMEM_INTERNAL_DIAG_WRAPLEN,
+                                             RAISE_PREFIX);
+            DEBUG_MSG("%s\n", cores_str_wrap);
+            free(cores_str_wrap);
+        }
+    }
+#endif
+
     /* Initialize transport devices */
-    ret = shmem_transport_init(eager_size);
+    ret = shmem_transport_init();
     if (0 != ret) {
         RETURN_ERROR_MSG("Transport init failed (%d)\n", ret);
         goto cleanup;
     }
-    transport_initialized = 1;
-#ifdef USE_XPMEM
-    ret = shmem_transport_xpmem_init(eager_size);
-    if (0 != ret) {
-        RETURN_ERROR_MSG("XPMEM init failed (%d)\n", ret);
-        goto cleanup;
-    }
-    xpmem_initialized = 1;
-#endif
 
-#ifdef USE_CMA
-    ret = shmem_transport_cma_init(eager_size);
+    ret = shmem_shr_transport_init();
     if (0 != ret) {
-        RETURN_ERROR_MSG("CMA init failed (%d)\n", ret);
+        RETURN_ERROR_MSG("Shared memory transport init failed (%d)\n", ret);
         goto cleanup;
     }
-    cma_initialized = 1;
-#endif
 
     /* exchange information */
     ret = shmem_runtime_exchange();
@@ -248,158 +382,69 @@ shmem_internal_init(int tl_requested, int *tl_provided)
         goto cleanup;
     }
 
+    DEBUG_MSG("Local rank=%d, Num. local=%d, Shr. rank=%d, Num. shr=%d\n",
+              enable_node_ranks ? shmem_runtime_get_node_rank(shmem_internal_my_pe) : 0,
+              enable_node_ranks ? shmem_runtime_get_node_size() : 1,
+              shmem_internal_get_shr_rank(shmem_internal_my_pe),
+              shmem_internal_get_shr_size());
+
     /* finish transport initialization after information sharing. */
     ret = shmem_transport_startup();
     if (0 != ret) {
         RETURN_ERROR_MSG("Transport startup failed (%d)\n", ret);
         goto cleanup;
     }
+    transport_initialized = 1;
 
-#ifdef USE_XPMEM
-    ret = shmem_transport_xpmem_startup();
+    ret = shmem_shr_transport_startup();
     if (0 != ret) {
-        RETURN_ERROR_MSG("XPMEM startup failed (%d)\n", ret);
+        RETURN_ERROR_MSG("Shared memory transport startup failed (%d)\n", ret);
         goto cleanup;
     }
-#endif
-#ifdef USE_CMA
-    ret = shmem_transport_cma_startup();
-    if (0 != ret) {
-        RETURN_ERROR_MSG("CMA startup failed (%d)\n", ret);
-        goto cleanup;
-    }
-#endif
+    shr_initialized = 1;
 
-    ret = shmem_internal_collectives_init(crossover, radix);
+    ret = shmem_internal_collectives_init();
     if (ret != 0) {
         RETURN_ERROR_MSG("Initialization of collectives failed (%d)\n", ret);
         goto cleanup;
     }
 
+    ret = shmem_internal_team_init();
+    if (ret != 0) {
+        RETURN_ERROR_MSG("Initialization of teams failed (%d)\n", ret);
+        goto cleanup;
+    }
+    teams_initialized = 1;
+
+    shmem_internal_randr_init();
+    randr_initialized = 1;
+
     atexit(shmem_internal_shutdown_atexit);
     shmem_internal_initialized = 1;
 
-    /* get hostname for shmem_getnodename */
-    if (gethostname(shmem_internal_my_hostname,
-                    sizeof(shmem_internal_my_hostname))) {
-        snprintf(shmem_internal_my_hostname,
-                    sizeof(shmem_internal_my_hostname),
-                    "ERR: gethostname '%s'?", strerror(errno));
-    }
-
-    /* last minute printing of information */
-    if (0 == shmem_internal_my_pe) {
-        if (NULL != shmem_util_getenv_str("VERSION") ||
-            NULL != shmem_util_getenv_str("INFO")    ||
-            shmem_internal_debug)
-        {
-            printf(PACKAGE_STRING "\n");
-            fflush(NULL);
-        }
-
-        if (NULL != shmem_util_getenv_str("INFO")) {
-            printf("SMA_VERSION             %s\n",
-                   (NULL != shmem_util_getenv_str("VERSION")) ? "Set" : "Not set");
-            printf("\tIf set, print library version at startup\n");
-            printf("SMA_INFO                %s\n",
-                   (NULL != shmem_util_getenv_str("INFO")) ? "Set" : "Not set");
-            printf("\tIf set, print this help message at startup\n");
-            printf("SMA_SYMMETRIC_SIZE      %ld\n", heap_size);
-            printf("\tSymmetric heap size\n");
-            printf("SMA_SYMMETRIC_HEAP_USE_MALLOC %s\n",
-                   (0 != heap_use_malloc) ? "Set" : "Not set");
-            printf("\tIf set, allocate the symmetric heap using malloc\n");
-            if (heap_use_malloc == 0) {
-                printf("SMA_SYMMETRIC_HEAP_USE_HUGE_PAGES %s\n",
-                        shmem_internal_heap_use_huge_pages ? "Yes" : "No");
-                if (shmem_internal_heap_use_huge_pages) {
-                    printf("SMA_SYMMETRIC_HEAP_PAGE_SIZE %ld \n",
-                           shmem_internal_heap_huge_page_size);
-                }
-                printf("\tSymmetric heap use large pages\n");
-            }
-            printf("SMA_COLL_CROSSOVER      %d\n", crossover);
-            printf("\tCross-over between linear and tree collectives\n");
-            printf("SMA_COLL_RADIX          %d\n", radix);
-            printf("\tRadix for tree-based collectives\n");
-            printf("SMA_BOUNCE_SIZE         %ld\n", eager_size);
-            printf("\tMaximum message size to bounce buffer\n");
-            printf("SMA_BARRIER_ALGORITHM   %s\n", coll_type_str[shmem_internal_barrier_type]);
-            printf("\tAlgorithm for barrier.  Options are auto, linear, tree, dissem\n");
-            printf("SMA_BCAST_ALGORITHM     %s\n", coll_type_str[shmem_internal_bcast_type]);
-            printf("\tAlgorithm for broadcast.  Options are auto, linear, tree\n");
-            printf("SMA_REDUCE_ALGORITHM    %s\n", coll_type_str[shmem_internal_reduce_type]);
-            printf("\tAlgorithm for reductions.  Options are auto, linear, tree, recdbl\n");
-            printf("SMA_COLLECT_ALGORITHM   %s\n", coll_type_str[shmem_internal_collect_type]);
-            printf("\tAlgorithm for collect.  Options are auto, linear\n");
-            printf("SMA_FCOLLECT_ALGORITHM  %s\n", coll_type_str[shmem_internal_fcollect_type]);
-            printf("\tAlgorithm for fcollect.  Options are auto, linear, ring, recdbl\n");
-            printf("SMA_DEBUG               %s\n", shmem_internal_debug ? "On" : "Off");
-            printf("\tEnable debugging messages\n");
-            printf("SMA_TRAP_ON_ABORT       %s\n", shmem_internal_trap_on_abort ? "On" : "Off");
-            printf("\tGenerate trap if the program aborts or calls shmem_global_exit\n");
-
-            printf("\n");
-#ifdef USE_XPMEM
-            printf("On-node transport:      XPMEM\n");
-#endif
-#ifdef USE_CMA
-            printf("On-node transport:      CMA\n");
-            printf("SMA_CMA_PUT_MAX         %zu\n", shmem_transport_cma_put_max);
-            printf("SMA_CMA_GET_MAX         %zu\n", shmem_transport_cma_get_max);
-#endif /* USE_CMA */
-#if !defined(USE_XPMEM) && !defined(USE_CMA)
-            printf("On-node transport:      NONE\n");
-#endif
-
-            printf("\n");
-            shmem_transport_print_info();
-            printf("\n");
-        }
-
-        if (shmem_internal_debug) {
-            char *wrapped_configure_args = shmem_util_wrap(SOS_CONFIGURE_ARGS, 60,
-                                                           "                        ");
-
-            printf("Build information:\n");
-#ifdef SOS_GIT_VERSION
-            printf("%-23s %s\n", "Git Version", SOS_GIT_VERSION);
-#endif
-            printf("%-23s %s\n", "Configure Args", wrapped_configure_args);
-            printf("%-23s %s\n", "Build Date", SOS_BUILD_DATE);
-            printf("%-23s %s\n", "Build CC", SOS_BUILD_CC);
-            printf("%-23s %s\n", "Build CFLAGS", SOS_BUILD_CFLAGS);
-            printf("\n");
-
-            free(wrapped_configure_args);
-        }
-
-        fflush(NULL);
-    }
-
-    DEBUG_MSG("Sym. heap=%p len=%ld -- data=%p len=%ld\n",
-              shmem_internal_heap_base, shmem_internal_heap_length,
-              shmem_internal_data_base, shmem_internal_data_length);
-
     /* finish up */
+#ifndef USE_PMIX
     shmem_runtime_barrier();
-    return;
+#endif
+    return 0;
 
  cleanup:
     if (transport_initialized) {
         shmem_transport_fini();
     }
 
-#ifdef USE_XPMEM
-    if (xpmem_initialized) {
-        shmem_transport_xpmem_fini();
+    if (shr_initialized) {
+        shmem_shr_transport_fini();
     }
-#endif
-#ifdef USE_CMA
-    if (cma_initialized) {
-        shmem_transport_cma_fini();
+
+    if (randr_initialized) {
+        shmem_internal_randr_fini();
     }
-#endif
+
+    if (teams_initialized) {
+        shmem_internal_team_fini();
+    }
+
     if (NULL != shmem_internal_data_base) {
         shmem_internal_symmetric_fini();
     }
@@ -407,13 +452,6 @@ shmem_internal_init(int tl_requested, int *tl_provided)
         shmem_runtime_fini();
     }
     abort();
-}
-
-
-char *
-shmem_internal_nodename(void)
-{
-    return shmem_internal_my_hostname;
 }
 
 
@@ -433,3 +471,4 @@ shmem_internal_global_exit(int status)
     shmem_internal_global_exit_called = 1;
     shmem_runtime_abort(status, str);
 }
+

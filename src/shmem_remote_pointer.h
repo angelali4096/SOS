@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -24,8 +24,14 @@ shmem_internal_ptr(const void *target, int pe)
 {
     int node_rank;
 
+    /* shmem_internal_get_shr_rank will only return a valid rank when on-node
+     * comms are enabled.  Check for the local PE here to return the pointer
+     * even when on-node comms are disabled. */
+    if (pe == shmem_internal_my_pe)
+        return (void *) target;
+
     // Only if regular load/stores are used to implement put/get!
-    if (-1 != (node_rank = SHMEM_GET_RANK_SAME_NODE(pe))) {
+    if (-1 != (node_rank = shmem_internal_get_shr_rank(pe))) {
 #if USE_XPMEM
         return shmem_transport_xpmem_ptr(target, pe, node_rank);
 #else

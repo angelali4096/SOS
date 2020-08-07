@@ -178,7 +178,7 @@
 #define ZERO64B 0LL
 
 uint64_t TotalMemOpt = 8192;
-int NumUpdatesOpt = 0; /* FIXME: This option is ignored */
+uint64_t NumUpdatesOpt = 0;
 double SHMEMGUPs;
 double SHMEMRandomAccess_ErrorsFraction;
 double SHMEMRandomAccess_time;
@@ -266,11 +266,12 @@ UpdateTable(uint64_t *Table,
 {
   uint64_t iterate;
   int index;
-  uint64_t ran, remote_val, global_offset;
+  uint64_t ran, global_offset;
   int remote_pe;
   int global_start_at_pe;
-
-  shmem_barrier_all();
+#ifdef USE_GET_PUT
+  uint64_t remote_val;
+#endif
 
   /* setup: should not really be part of this timed routine */
   ran = starts(4*GlobalStartMyProc);
@@ -288,20 +289,22 @@ UpdateTable(uint64_t *Table,
       index = global_offset - global_start_at_pe;
 
       if (use_lock) shmem_set_lock(&HPCC_PELock[remote_pe]);
+#ifdef USE_GET_PUT
       remote_val = (uint64_t) shmem_long_g((long *)&Table[index], remote_pe);
       remote_val ^= ran;
       shmem_long_p((long *)&Table[index], remote_val, remote_pe);
+#else
+      shmem_uint64_atomic_xor(&Table[index], ran, remote_pe);
+#endif
       if (use_lock) shmem_clear_lock(&HPCC_PELock[remote_pe]);
   }
-
-  shmem_barrier_all();
-
 }
 
 int
 SHMEMRandomAccess(void)
 {
   int64_t i;
+  uint64_t i_u;
   static int64_t NumErrors, GlbNumErrors;
 
   int NumProcs, MyProc;
@@ -316,9 +319,7 @@ SHMEMRandomAccess(void)
   double TotalMem;
   static int sAbort, rAbort;
 
-  uint64_t NumUpdates_Default; /* Number of updates to table (suggested: 4x number of table entries) */
-  uint64_t NumUpdates;  /* actual number of updates to table - may be smaller than
-                       * NumUpdates_Default due to execution time bounds */
+  uint64_t NumUpdates; /* total number of updates to table */
   uint64_t ProcNumUpdates; /* number of updates per processor */
 
   static long pSync_bcast[SHMEM_BCAST_SYNC_SIZE];
@@ -397,24 +398,29 @@ SHMEMRandomAccess(void)
   HPCC_PELock = (long *) shmem_malloc(sizeof(long) * NumProcs);
   if (! HPCC_PELock) sAbort = 1;
 
-  for (i = 0; i < NumProcs; i++)
-      HPCC_PELock[i] = 0;
-
   shmem_barrier_all();
   shmem_int_sum_to_all(&rAbort, &sAbort, 1, 0, 0, NumProcs, ipWrk, pSync_reduce);
   shmem_barrier_all();
 
   if (rAbort > 0) {
-    if (MyProc == 0) fprintf(outFile, "Failed to allocate memory for the main table.\n");
+    if (MyProc == 0) fprintf(outFile, "Failed to allocate memory\n");
     /* check all allocations in case there are new added and their order changes */
     if (HPCC_Table) shmem_free( HPCC_Table );
+    if (HPCC_PELock) shmem_free( HPCC_PELock );
     goto failed_table;
   }
 
+  for (i = 0; i < NumProcs; i++)
+      HPCC_PELock[i] = 0;
+
   /* Default number of global updates to table: 4x number of table entries */
-  NumUpdates_Default = 4 * TableSize;
-  ProcNumUpdates = 4 * LocalTableSize;
-  NumUpdates = NumUpdates_Default;
+  if (NumUpdatesOpt == 0) {
+     ProcNumUpdates = 4 * LocalTableSize;
+     NumUpdates = 4 * TableSize;
+  } else {
+     ProcNumUpdates = NumUpdatesOpt;
+     NumUpdates = NumUpdatesOpt * NumProcs;
+  }
 
   if (MyProc == 0) {
     fprintf( outFile, "Running on %d processors\n", NumProcs);
@@ -423,17 +429,18 @@ SHMEMRandomAccess(void)
     fprintf( outFile, "PE Main table size = (2^%" PRIu64 ")/%d  = %" PRIu64 " words/PE MAX\n",
              logTableSize, NumProcs, LocalTableSize);
 
-    fprintf( outFile, "Default number of updates (RECOMMENDED) = %" PRIu64 "\n", NumUpdates_Default);
+    fprintf( outFile, "Total number of updates = %" PRIu64 "\n", NumUpdates);
   }
 
   /* Initialize main table */
-  for (i=0; i<LocalTableSize; i++)
-    HPCC_Table[i] = i + GlobalStartMyProc;
+  for (i_u=0; i_u<LocalTableSize; i_u++)
+    HPCC_Table[i_u] = i_u + GlobalStartMyProc;
 
   shmem_barrier_all();
 
   RealTime = -RTSEC();
 
+  shmem_barrier_all();
   UpdateTable(HPCC_Table,
               TableSize,
               MinLocalTableSize,
@@ -470,6 +477,7 @@ SHMEMRandomAccess(void)
 
   RealTime = -RTSEC();
 
+  shmem_barrier_all();
   UpdateTable(HPCC_Table,
               TableSize,
               MinLocalTableSize,
@@ -478,9 +486,10 @@ SHMEMRandomAccess(void)
               ProcNumUpdates,
               1);
 
+  shmem_barrier_all();
   NumErrors = 0;
-  for (i=0; i<LocalTableSize; i++){
-    if (HPCC_Table[i] != i + GlobalStartMyProc)
+  for (i_u=0; i_u<LocalTableSize; i_u++){
+    if (HPCC_Table[i_u] != i_u + GlobalStartMyProc)
       NumErrors++;
   }
 

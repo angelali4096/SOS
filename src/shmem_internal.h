@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -21,10 +21,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
+#include <limits.h>
+#include <sys/param.h>
 
 #include "shmemx.h"
 #include "runtime.h"
 #include "config.h"
+#include "shmem_env.h"
+#include "shmem_decl.h"
 
 extern int shmem_internal_my_pe;
 extern int shmem_internal_num_pes;
@@ -32,18 +36,23 @@ extern int shmem_internal_num_pes;
 extern int shmem_internal_initialized;
 extern int shmem_internal_finalized;
 extern int shmem_internal_thread_level;
-extern int shmem_internal_debug;
-extern int shmem_internal_trap_on_abort;
 
 extern void *shmem_internal_heap_base;
 extern long shmem_internal_heap_length;
 extern void *shmem_internal_data_base;
 extern long shmem_internal_data_length;
-extern int shmem_internal_heap_use_huge_pages;
-extern long shmem_internal_heap_huge_page_size;
+
+extern unsigned int shmem_internal_rand_seed;
+
+#define SHMEM_INTERNAL_HEAP_OVERHEAD (1024*1024)
+#define SHMEM_INTERNAL_DIAG_STRLEN 1024
+#define SHMEM_INTERNAL_DIAG_WRAPLEN 72
 
 /* Note: must be accompanied by shmem_internal_my_pe in arguments */
-#define RAISE_PE_PREFIX "[%04d]        "
+#define RAISE_PE_PREFIX      "[%04d]        "
+#define RAISE_PREINIT_PREFIX "[????]        "
+#define RAISE_PREFIX         "              "
+
 
 #define RAISE_WARN(ret)                                                 \
     do {                                                                \
@@ -89,7 +98,7 @@ extern long shmem_internal_heap_huge_page_size;
 
 #define RETURN_ERROR_MSG(...)                                           \
     do {                                                                \
-        char str[256];                                                  \
+        char str[SHMEM_INTERNAL_DIAG_STRLEN];                           \
         size_t off;                                                     \
         off = snprintf(str, sizeof(str), "[%04d] ERROR: %s:%d: %s\n",   \
                        shmem_internal_my_pe, __FILE__, __LINE__, __func__); \
@@ -109,7 +118,7 @@ extern long shmem_internal_heap_huge_page_size;
 
 #define RAISE_WARN_MSG(...)                                             \
     do {                                                                \
-        char str[256];                                                  \
+        char str[SHMEM_INTERNAL_DIAG_STRLEN];                           \
         size_t off;                                                     \
         off = snprintf(str, sizeof(str), "[%04d] WARN:  %s:%d: %s\n",   \
                        shmem_internal_my_pe, __FILE__, __LINE__, __func__); \
@@ -120,9 +129,21 @@ extern long shmem_internal_heap_huge_page_size;
     } while (0)
 
 
+#define RETURN_ERROR_MSG_PREINIT(...)                                   \
+    do {                                                                \
+        char str[SHMEM_INTERNAL_DIAG_STRLEN];                           \
+        size_t off;                                                     \
+        off = snprintf(str, sizeof(str), "[????] ERROR: %s:%d: %s\n",   \
+                       __FILE__, __LINE__, __func__);                   \
+        off+= snprintf(str+off, sizeof(str)-off, RAISE_PREINIT_PREFIX); \
+        off+= snprintf(str+off, sizeof(str)-off, __VA_ARGS__);          \
+        fprintf(stderr, "%s", str);                                     \
+    } while (0)
+
+
 #define DEBUG_STR(str)                                                  \
     do {                                                                \
-        if(shmem_internal_debug) {                                      \
+        if(shmem_internal_params.DEBUG) {                               \
             fprintf(stderr, "[%04d] DEBUG: %s:%d: %s\n"                 \
                     RAISE_PE_PREFIX "%s\n",                             \
                     shmem_internal_my_pe, __FILE__, __LINE__, __func__, \
@@ -132,8 +153,8 @@ extern long shmem_internal_heap_huge_page_size;
 
 #define DEBUG_MSG(...)                                                  \
     do {                                                                \
-        if(shmem_internal_debug) {                                      \
-            char str[256];                                              \
+        if(shmem_internal_params.DEBUG) {                               \
+            char str[SHMEM_INTERNAL_DIAG_STRLEN];                       \
             size_t off;                                                 \
             off = snprintf(str, sizeof(str), "[%04d] DEBUG: %s:%d: %s\n", \
                            shmem_internal_my_pe, __FILE__, __LINE__,    \
@@ -173,21 +194,27 @@ extern long shmem_internal_heap_huge_page_size;
         }                                                               \
     } while (0)
 
-#define SHMEM_ERR_CHECK_ACTIVE_SET(PE_start, logPE_stride, PE_size)                                     \
+#define SHMEM_ERR_CHECK_ACTIVE_SET(PE_start, PE_stride, PE_size)                                        \
     do {                                                                                                \
-        int shmem_err_check_active_stride = 1 << logPE_stride;                                          \
-        if (PE_start < 0 || logPE_stride < 0 || PE_size < 0 ||                                          \
-            PE_start + (PE_size - 1) * shmem_err_check_active_stride > shmem_internal_num_pes) {        \
-            fprintf(stderr, "ERROR: %s(): Invalid active set (PE_start = %d, logPE_stride = %d, PE_size = %d)\n", \
-                    __func__, PE_start, logPE_stride, PE_size);                                         \
+        if (PE_start < 0 || (PE_stride) < 1 || PE_size < 0 ||                                           \
+            PE_start + ((PE_size - 1) * (PE_stride)) > shmem_internal_num_pes) {                        \
+            fprintf(stderr, "ERROR: %s(): Invalid active set (PE_start = %d, PE_stride = %d, PE_size = %d)\n", \
+                    __func__, PE_start, (PE_stride), PE_size);                                          \
             shmem_runtime_abort(100, PACKAGE_NAME " exited in error");                                  \
         }                                                                                               \
         if (! (shmem_internal_my_pe >= PE_start &&                                                      \
-               shmem_internal_my_pe <= PE_start + (PE_size-1) * shmem_err_check_active_stride &&        \
-               (shmem_internal_my_pe - PE_start) % shmem_err_check_active_stride == 0)) {               \
+               shmem_internal_my_pe <= PE_start + ((PE_size-1) * (PE_stride)) &&                        \
+               (shmem_internal_my_pe - PE_start) % (PE_stride) == 0)) {                                 \
             fprintf(stderr, "ERROR: %s(): Calling PE (%d) is not a member of the active set\n",         \
                     __func__, shmem_internal_my_pe);                                                    \
             shmem_runtime_abort(100, PACKAGE_NAME " exited in error");                                  \
+        }                                                                                               \
+    } while (0)
+
+#define SHMEM_ERR_CHECK_TEAM_VALID(team)                                                                \
+    do {                                                                                                \
+        if (team == SHMEMX_TEAM_INVALID) {                                                              \
+            RAISE_ERROR_STR("Invalid team argument");                                                   \
         }                                                                                               \
     } while (0)
 
@@ -198,6 +225,15 @@ extern long shmem_internal_heap_huge_page_size;
                     __func__, (pe));                                    \
             shmem_runtime_abort(100, PACKAGE_NAME " exited in error");  \
         }                                                               \
+    } while (0)
+
+#define SHMEM_ERR_CHECK_CTX(ctx)                                          \
+    do {                                                                  \
+        if (ctx == SHMEMX_CTX_INVALID) {                                  \
+            fprintf(stderr, "ERROR: %s(): ctx argument is invalid\n",     \
+                    __func__);                                            \
+            shmem_runtime_abort(100, PACKAGE_NAME " exited in error");    \
+        }                                                                 \
     } while (0)
 
 #define SHMEM_ERR_CHECK_SYMMETRIC(ptr_in, len)                                          \
@@ -276,16 +312,33 @@ extern long shmem_internal_heap_huge_page_size;
         }                                                                               \
     } while (0)
 
+#define SHMEM_ERR_CHECK_SIG_OP(op)                                                      \
+    do {                                                                                \
+        switch(op) {                                                                    \
+            case SHMEMX_SIGNAL_SET:                                                      \
+            case SHMEMX_SIGNAL_ADD:                                                      \
+                break;                                                                  \
+            default:                                                                    \
+                fprintf(stderr, "ERROR: %s(): Argument \"%s\", "                        \
+                                "invalid atomic operation for signal (%d)\n",           \
+                        __func__, #op, (int) (op));                                     \
+                shmem_runtime_abort(100, PACKAGE_NAME " exited in error");              \
+        }                                                                               \
+    } while (0)
+
 #else
 #define SHMEM_ERR_CHECK_INITIALIZED()
 #define SHMEM_ERR_CHECK_POSITIVE(arg)
 #define SHMEM_ERR_CHECK_NON_NEGATIVE(arg)
-#define SHMEM_ERR_CHECK_ACTIVE_SET(PE_start, logPE_stride, PE_size)
+#define SHMEM_ERR_CHECK_ACTIVE_SET(PE_start, PE_stride, PE_size)
+#define SHMEM_ERR_CHECK_TEAM_VALID(team)
 #define SHMEM_ERR_CHECK_PE(pe)
+#define SHMEM_ERR_CHECK_CTX(ctx)
 #define SHMEM_ERR_CHECK_SYMMETRIC(ptr, len)
 #define SHMEM_ERR_CHECK_SYMMETRIC_HEAP(ptr)
 #define SHMEM_ERR_CHECK_NULL(ptr, nelems)
 #define SHMEM_ERR_CHECK_CMP_OP(op)
+#define SHMEM_ERR_CHECK_SIG_OP(op)                                                      \
 
 #endif /* ENABLE_ERROR_CHECKING */
 
@@ -332,22 +385,22 @@ typedef pthread_mutex_t shmem_internal_mutex_t;
 
 #   define SHMEM_MUTEX_INIT(_mutex)                                     \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
-            pthread_mutex_init(&_mutex, NULL); \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
+            pthread_mutex_init(&_mutex, NULL);                          \
     } while (0)
 #   define SHMEM_MUTEX_DESTROY(_mutex)                                  \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
             pthread_mutex_destroy(&_mutex);                             \
     } while (0)
 #   define SHMEM_MUTEX_LOCK(_mutex)                                     \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
             pthread_mutex_lock(&_mutex);                                \
     } while (0)
 #   define SHMEM_MUTEX_UNLOCK(_mutex)                                   \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
             pthread_mutex_unlock(&_mutex);                              \
     } while (0)
 
@@ -357,53 +410,88 @@ typedef shmem_spinlock_t shmem_internal_mutex_t;
 
 #   define SHMEM_MUTEX_INIT(_mutex)                                     \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
             shmem_spinlock_init(&_mutex);                               \
     } while (0)
 #   define SHMEM_MUTEX_DESTROY(_mutex)                                  \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
             shmem_spinlock_fini(&_mutex);                               \
     } while (0)
 #   define SHMEM_MUTEX_LOCK(_mutex)                                     \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
             shmem_spinlock_lock(&_mutex);                               \
     } while (0)
 #   define SHMEM_MUTEX_UNLOCK(_mutex)                                   \
     do {                                                                \
-        if (shmem_internal_thread_level > SHMEMX_THREAD_SINGLE)          \
+        if (shmem_internal_thread_level == SHMEM_THREAD_MULTIPLE)       \
             shmem_spinlock_unlock(&_mutex);                             \
     } while (0)
 
 #   endif /* ENABLE_PTHREAD_MUTEX */
 
 extern shmem_internal_mutex_t shmem_internal_mutex_alloc;
+extern shmem_internal_mutex_t shmem_internal_mutex_rand_r;
 
 #else
 #   define SHMEM_MUTEX_INIT(_mutex)
 #   define SHMEM_MUTEX_DESTROY(_mutex)
 #   define SHMEM_MUTEX_LOCK(_mutex)
 #   define SHMEM_MUTEX_UNLOCK(_mutex)
-
 #endif /* ENABLE_THREADS */
 
 void shmem_internal_start_pes(int npes);
-void shmem_internal_init(int tl_requested, int *tl_provided);
+int  shmem_internal_init(int tl_requested, int *tl_provided);
 void shmem_internal_finalize(void);
-void shmem_internal_global_exit(int status);
-char *shmem_internal_nodename(void);
+void shmem_internal_global_exit(int status) SHMEM_ATTRIBUTE_NORETURN;
 
-int shmem_internal_symmetric_init(size_t requested_length, int use_malloc);
+int shmem_internal_symmetric_init(void);
 int shmem_internal_symmetric_fini(void);
-int shmem_internal_collectives_init(int requested_crossover,
-                                    int requested_radix);
+int shmem_internal_collectives_init(void);
 
 /* internal allocation, without a barrier */
 void *shmem_internal_shmalloc(size_t size);
 void* shmem_internal_get_next(intptr_t incr);
 
-static inline double shmem_internal_wtime(void) {
+void dlfree(void*);
+
+static inline void shmem_internal_free(void *ptr)
+{
+    /* It's fine to call dlfree with NULL, but better to avoid unnecessarily
+     * taking the mutex in the threaded case. */
+    if (ptr != NULL) {
+        SHMEM_MUTEX_LOCK(shmem_internal_mutex_alloc);
+        dlfree(ptr);
+        SHMEM_MUTEX_UNLOCK(shmem_internal_mutex_alloc);
+    }
+}
+
+/* Query PEs reachable using shared memory */
+static inline int shmem_internal_get_shr_rank(int pe)
+{
+#ifdef USE_ON_NODE_COMMS
+    return shmem_runtime_get_node_rank(pe);
+#elif defined(USE_MEMCPY)
+    return pe == shmem_runtime_get_rank() ? 0 : -1;
+#else
+    return -1;
+#endif
+}
+
+static inline int shmem_internal_get_shr_size(void)
+{
+#ifdef USE_ON_NODE_COMMS
+    return shmem_runtime_get_node_size();
+#elif defined(USE_MEMCPY)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+static inline double shmem_internal_wtime(void)
+{
     double wtime = 0.0;
 
 #ifdef HAVE_CLOCK_GETTIME
@@ -421,12 +509,94 @@ static inline double shmem_internal_wtime(void) {
 }
 
 /* Utility functions */
-long shmem_util_getenv_long(const char* name, int is_sized, long default_value);
-char *shmem_util_getenv_str(const char* name);
 char *shmem_util_wrap(const char *str, const size_t wraplen, const char *indent);
+char *shmem_util_strerror(int errnum, char *buf, size_t buflen);
+
+/* Backtrace functions */
+void shmem_util_backtrace(void); 
 
 #ifndef MAX
 #define MAX(A,B) (A) > (B) ? (A) : (B)
 #endif
+
+extern uint64_t (*shmem_internal_gettid_fn)(void);
+extern void shmem_internal_register_gettid(uint64_t (*gettid_fn)(void));
+
+static inline
+void shmem_internal_bit_set(unsigned char *ptr, size_t size, size_t index)
+{
+    shmem_internal_assert(size > 0 && (index < size * CHAR_BIT));
+
+    size_t which_byte = index / size;
+    ptr[which_byte] |= (1 << (index % CHAR_BIT));
+
+    return;
+}
+
+static inline
+void shmem_internal_bit_clear(unsigned char *ptr, size_t size, size_t index)
+{
+    shmem_internal_assert(size > 0 && (index < size * CHAR_BIT));
+
+    size_t which_byte = index / size;
+    ptr[which_byte] &= ~(1 << (index % CHAR_BIT));
+
+    return;
+}
+
+static inline
+unsigned char shmem_internal_bit_fetch(unsigned char *ptr, size_t index)
+{
+    return (ptr[index / CHAR_BIT] >> index) & 1;
+}
+
+static inline
+size_t shmem_internal_bit_1st_nonzero(const unsigned char *ptr, const size_t size)
+{
+    /* The following ignores endianess: */
+    for(size_t i = 0; i < size; i++) {
+        unsigned char bit_val = ptr[i];
+        for (size_t j = 0; bit_val && j < CHAR_BIT; j++) {
+            if (bit_val & 1) return i * CHAR_BIT + j;
+            bit_val >>= 1;
+        }
+    }
+
+    return -1;
+}
+
+/* Create a bit string of the format AAAAAAAA.BBBBBBBB into str for the byte
+ * array passed via ptr. */
+static inline
+void shmem_internal_bit_to_string(char *str, size_t str_size,
+                                  unsigned char *ptr, size_t ptr_size)
+{
+    size_t off = 0;
+
+    for (size_t i = 0; i < ptr_size; i++) {
+        for (size_t j = 0; j < CHAR_BIT; j++) {
+            off += snprintf(str+off, str_size-off, "%s",
+                            (ptr[i] & (1 << (CHAR_BIT-1-j))) ? "1" : "0");
+            if (off >= str_size) return;
+        }
+        if (i < ptr_size - 1) {
+            off += snprintf(str+off, str_size-off, ".");
+            if (off >= str_size) return;
+        }
+    }
+}
+
+/* Return -1 if `global_pe` is not in the given active set.
+ * If `global_pe` is in the active set, return the PE index within this set. */
+static inline
+int shmem_internal_pe_in_active_set(int global_pe, int PE_start, int PE_stride, int PE_size)
+{
+    int n = (global_pe - PE_start) / PE_stride;
+    if (global_pe < PE_start || (global_pe - PE_start) % PE_stride || n >= PE_size)
+        return -1;
+    else {
+        return n;
+    }
+}
 
 #endif

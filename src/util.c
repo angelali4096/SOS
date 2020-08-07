@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -13,10 +13,8 @@
  *
  */
 
-
 #include "config.h"
 
-#define _GNU_SOURCE /* for asprintf */
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -24,120 +22,6 @@
 #include <string.h>
 
 #include "shmem_internal.h"
-
-
-/* atol() + optional scaled suffix recognition: 1K, 2M, 3G, 1T */
-static long
-atol_scaled(char *s)
-{
-    long val;
-    char *e;
-    errno = 0;
-
-    val = strtol(s,&e,0);
-    if(errno != 0 || e == s) {
-        shmem_runtime_abort(1, "env var conversion");
-    }
-    if (e == NULL || *e =='\0')
-        return val;
-
-    if (*e == 'K')
-        val *= 1024L;
-    else if (*e == 'M')
-        val *= 1024L*1024L;
-    else if (*e == 'G')
-        val *= 1024L*1024L*1024L;
-    else if (*e == 'T')
-        val *= 1024L*1024L*1024L*1024L;
-
-    return val;
-}
-
-
-static inline long
-errchk_atol(char *s)
-{
-    long val;
-    char *e;
-    errno = 0;
-
-    val = strtol(s,&e,0);
-    if(errno != 0) {
-        char errmsg[128];
-        strerror_r(errno, errmsg, 128);
-        RAISE_ERROR_MSG("conversion failed (%s)\n", errmsg);
-    }
-
-    return val;
-}
-
-
-long
-shmem_util_getenv_long(const char* name, int is_sized, long default_value)
-{
-    char *env_name, *env_value;
-    int ret;
-
-    ret = asprintf(&env_name, "SMA_%s", name);
-    if (ret < 0) {
-        RAISE_ERROR(ret);
-    }
-    env_value = getenv(env_name);
-    free(env_name);
-    if (env_value != NULL) {
-        if (is_sized) {
-            return atol_scaled(env_value);
-        } else {
-            return errchk_atol(env_value);
-        }
-    }
-
-    ret = asprintf(&env_name, "SHMEM_%s", name);
-    if (ret < 0) {
-        RAISE_ERROR(ret);
-    }
-    env_value = getenv(env_name);
-    free(env_name);
-    if (env_value != NULL) {
-        if (is_sized) {
-            return atol_scaled(env_value);
-        } else {
-            return errchk_atol(env_value);
-        }
-    }
-
-    return default_value;
-}
-
-
-char *
-shmem_util_getenv_str(const char* name)
-{
-    char *env_name, *env_value;
-    int ret;
-
-    ret = asprintf(&env_name, "SMA_%s", name);
-    if (ret < 0) {
-        RAISE_ERROR(ret);
-    }
-    env_value = getenv(env_name);
-    free(env_name);
-    if (env_value != NULL) {
-        return env_value;
-    }
-
-    ret = asprintf(&env_name, "SHMEM_%s", name);
-    if (ret < 0) {
-        RAISE_ERROR(ret);
-    }
-    env_value = getenv(env_name);
-    free(env_name);
-    if (env_value != NULL) {
-        return env_value;
-    }
-
-    return NULL;
-}
 
 
 /* Wrap 'str' to fit within 'wraplen' columns.  After each line break, insert
@@ -189,4 +73,24 @@ shmem_util_wrap(const char *str, const size_t wraplen, const char *indent)
     }
     *out_p = '\0';
     return out;
+}
+
+
+/* Wrap strerror_r to iron out API differences when _GNU_SOURCE is enabled
+ * errnum - Error code
+ * buf    - User-supplied buffer to store error message
+ * buflen - buflen Length of buffer pointed to by buf
+ * return - pointer to error message (may differ from buf)
+ */
+char *shmem_util_strerror(int errnum, char *buf, size_t buflen) {
+#ifdef _GNU_SOURCE
+    return strerror_r(errnum, buf, buflen);
+#else
+    int err = strerror_r(errnum, buf, buflen);
+    if (err == ERANGE)
+        RAISE_WARN_MSG("Error message was truncated\n");
+    else if (err)
+        RAISE_WARN_MSG("Error in call to strerr_r (%d)\n", err);
+    return buf;
+#endif
 }

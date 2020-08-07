@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -39,7 +39,7 @@
 
 
 void SHMEM_FUNCTION_ATTRIBUTES
-shmem_clear_lock(volatile long *lockp)
+shmem_clear_lock(long *lockp)
 {
     SHMEM_ERR_CHECK_INITIALIZED();
     SHMEM_ERR_CHECK_SYMMETRIC(lockp, sizeof(long));
@@ -49,7 +49,7 @@ shmem_clear_lock(volatile long *lockp)
 
 
 void SHMEM_FUNCTION_ATTRIBUTES
-shmem_set_lock(volatile long *lockp)
+shmem_set_lock(long *lockp)
 {
     SHMEM_ERR_CHECK_INITIALIZED();
     SHMEM_ERR_CHECK_SYMMETRIC(lockp, sizeof(long));
@@ -59,7 +59,7 @@ shmem_set_lock(volatile long *lockp)
 
 
 int SHMEM_FUNCTION_ATTRIBUTES
-shmem_test_lock(volatile long *lockp)
+shmem_test_lock(long *lockp)
 {
     SHMEM_ERR_CHECK_INITIALIZED();
     SHMEM_ERR_CHECK_SYMMETRIC(lockp, sizeof(long));

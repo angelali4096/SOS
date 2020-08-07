@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -18,6 +18,7 @@
 
 #include "shmem_comm.h"
 #include "shmem_synchronization.h"
+#include "shmem_atomic.h"
 
 
 /*
@@ -36,83 +37,114 @@ typedef struct lock_t lock_t;
 
 
 static inline void
-shmem_internal_clear_lock(volatile long *lockp)
+shmem_internal_clear_lock(long *lockp)
 {
     lock_t *lock = (lock_t*) lockp;
     int curr, cond, zero = 0, sig = SIGNAL_MASK;
 
-    shmem_internal_quiet();
+    shmem_internal_quiet(SHMEM_CTX_DEFAULT);
 
     /* release the lock if I'm the last to try to obtain it */
     cond = shmem_internal_my_pe + 1;
-    shmem_internal_cswap(&(lock->last), &zero, &curr, &cond, sizeof(int), 0, SHM_INTERNAL_INT);
-    shmem_internal_get_wait();
+    shmem_internal_cswap(SHMEM_CTX_DEFAULT, &(lock->last), &zero, &curr, &cond,
+                         sizeof(int), 0, SHM_INTERNAL_INT);
+    shmem_internal_get_wait(SHMEM_CTX_DEFAULT);
 
-    /* if local PE was not the last to hold the lock, have to look for the next in line */
+    /* if local PE was not the last to hold the lock, look for the next in line */
     if (curr != shmem_internal_my_pe + 1) {
+        int cur_data;
+
         /* wait for next part of the data block to be non-zero */
         for (;;) {
-            lock_t lock_cur = *lock;
+            shmem_internal_atomic_fetch(SHMEM_CTX_DEFAULT, &cur_data, &(lock->data),
+                                        sizeof(int), shmem_internal_my_pe,
+                                        SHM_INTERNAL_INT);
+            shmem_internal_get_wait(SHMEM_CTX_DEFAULT);
 
-            if (NEXT(lock_cur.data) != 0)
+            if (NEXT(cur_data) != 0)
                 break;
 
-            shmem_int_wait(&(lock->data), lock_cur.data);
+            SHMEM_WAIT(&(lock->data), cur_data);
         }
 
         /* set the signal bit on new lock holder */
-        shmem_internal_mswap(&(lock->data), &sig, &curr, &sig, sizeof(int), NEXT(lock->data) - 1, SHM_INTERNAL_INT);
-        shmem_internal_get_wait();
+        shmem_internal_mswap(SHMEM_CTX_DEFAULT, &(lock->data), &sig, &curr,
+                             &sig, sizeof(int), NEXT(cur_data) - 1, SHM_INTERNAL_INT);
+        shmem_internal_get_wait(SHMEM_CTX_DEFAULT);
     }
 }
 
 
 static inline void
-shmem_internal_set_lock(volatile long *lockp)
+shmem_internal_set_lock(long *lockp)
 {
     lock_t *lock = (lock_t*) lockp;
-    int curr, zero = 0, me = shmem_internal_my_pe + 1, next_mask = NEXT_MASK;
+    int curr, zero = 0, me = shmem_internal_my_pe + 1;
 
     /* initialize my elements to zero */
-    shmem_internal_put_small(&(lock->data), &zero, sizeof(zero), shmem_internal_my_pe);
-    shmem_internal_quiet();
+    shmem_internal_atomic_set(SHMEM_CTX_DEFAULT, &(lock->data), &zero,
+                              sizeof(zero), shmem_internal_my_pe, SHM_INTERNAL_INT);
+    shmem_internal_quiet(SHMEM_CTX_DEFAULT);
 
     /* update last with my value to add me to the queue */
-    shmem_internal_swap(&(lock->last), &me, &curr, sizeof(int), 0, SHM_INTERNAL_INT);
-    shmem_internal_get_wait();
+    shmem_internal_swap(SHMEM_CTX_DEFAULT, &(lock->last), &me, &curr,
+                        sizeof(int), 0, SHM_INTERNAL_INT);
+    shmem_internal_get_wait(SHMEM_CTX_DEFAULT);
+
     /* If I wasn't the first, need to add myself to the previous last's next */
     if (0 != curr) {
-        shmem_internal_mswap(&(lock->data), &me, &curr, &next_mask, sizeof(int), curr - 1, SHM_INTERNAL_INT);
-        shmem_internal_get_wait();
+        int next_mask = NEXT_MASK;
+
+        shmem_internal_mswap(SHMEM_CTX_DEFAULT, &(lock->data), &me, &curr,
+                             &next_mask, sizeof(int), curr - 1, SHM_INTERNAL_INT);
+        shmem_internal_get_wait(SHMEM_CTX_DEFAULT);
+
         /* now wait for the signal part of data to be non-zero */
         for (;;) {
-            lock_t lock_cur = *lock;
+            int cur_data;
 
-            if (SIGNAL(lock_cur.data) != 0)
+            shmem_internal_atomic_fetch(SHMEM_CTX_DEFAULT, &cur_data, &(lock->data),
+                                        sizeof(int), shmem_internal_my_pe, SHM_INTERNAL_INT);
+            shmem_internal_get_wait(SHMEM_CTX_DEFAULT);
+
+            if (SIGNAL(cur_data) != 0)
                 break;
 
-            shmem_int_wait(&(lock->data), lock_cur.data);
+            SHMEM_WAIT(&(lock->data), cur_data);
         }
     }
+
+    shmem_internal_membar_acquire();
+    /* Transport level memory flush is required to make memory changes (i.e.
+     * operations performed within a previous critical section) visible */
+    shmem_transport_syncmem();
 }
 
 
 static inline int
-shmem_internal_test_lock(volatile long *lockp)
+shmem_internal_test_lock(long *lockp)
 {
     lock_t *lock = (lock_t*) lockp;
     int curr, me = shmem_internal_my_pe + 1, zero = 0;
 
     /* initialize my elements to zero */
-    shmem_internal_put_small(&(lock->data), &zero, sizeof(zero), shmem_internal_my_pe);
-    shmem_internal_quiet();
+    shmem_internal_atomic_set(SHMEM_CTX_DEFAULT, &(lock->data), &zero,
+                              sizeof(zero), shmem_internal_my_pe, SHM_INTERNAL_INT);
+    shmem_internal_quiet(SHMEM_CTX_DEFAULT);
 
     /* add self to last if and only if the lock is zero (ie, no one has the lock) */
-    shmem_internal_cswap(&(lock->last), &me, &curr, &zero, sizeof(int), 0, SHM_INTERNAL_INT);
-    shmem_internal_get_wait();
+    shmem_internal_cswap(SHMEM_CTX_DEFAULT, &(lock->last), &me, &curr, &zero,
+                         sizeof(int), 0, SHM_INTERNAL_INT);
+    shmem_internal_get_wait(SHMEM_CTX_DEFAULT);
+
     if (0 == curr) {
+        shmem_internal_membar_acquire();
+        /* Transport level memory flush is required to make memory changes
+         * (i.e. operations performed within a previous critical section) visible */
+        shmem_transport_syncmem();
         return 0;
     }
+
     return 1;
 }
 

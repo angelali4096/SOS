@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -16,11 +16,16 @@
 #ifndef SHMEM_TRANSPORT_CMA_H
 #define SHMEM_TRANSPORT_CMA_H
 
-#define _GNU_SOURCE
-#include <unistd.h>
-#include <sys/syscall.h>
+#ifndef _GNU_SOURCE
+#error CMA transport requires definition of _GNU_SOURCE
+#endif
 
 #include <sys/uio.h>
+#ifndef HAVE_LIBC_CMA
+#include <sys/syscall.h>
+#endif
+
+#include <unistd.h>
 #include <sys/types.h>
 #include <string.h>
 #include <errno.h>
@@ -31,10 +36,8 @@
 
 extern pid_t shmem_transport_cma_my_pid;
 extern pid_t *shmem_transport_cma_peers;
-extern size_t shmem_transport_cma_put_max;
-extern size_t shmem_transport_cma_get_max;
 
-int shmem_transport_cma_init(long eager_size);
+int shmem_transport_cma_init(void);
 int shmem_transport_cma_startup(void);
 int shmem_transport_cma_fini(void);
 
@@ -106,9 +109,9 @@ shmem_transport_cma_put(void *target, const void *source, size_t len,
                         (const struct iovec *)&tgt, 1, 0);
 
         if ( bytes < 0 || (size_t) bytes != len) {
-            char errmsg[128];
-            strerror_r(errno, errmsg, 128);
-            RAISE_ERROR_MSG("process_vm_writev() failed (%s)\n", errmsg);
+            char errmsg[256];
+            RAISE_ERROR_MSG("process_vm_writev() failed (%s)\n",
+                            shmem_util_strerror(errno, errmsg, 256));
         }
 }
 
@@ -135,9 +138,9 @@ shmem_transport_cma_get(void *target, const void *source, size_t len, int pe,
                                 (const struct iovec *)&tgt, 1,
                                 (const struct iovec *)&src, 1, 0);
         if ( bytes < 0 || (size_t) bytes != len) {
-            char errmsg[128];
-            strerror_r(errno, errmsg, 128);
-            RAISE_ERROR_MSG("process_vm_readv() failed (%s)\n", errmsg);
+            char errmsg[256];
+            RAISE_ERROR_MSG("process_vm_readv() failed (%s)\n",
+                            shmem_util_strerror(errno, errmsg, 256));
         }
 }
 

@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -32,8 +32,6 @@
 
 pid_t shmem_transport_cma_my_pid;
 pid_t *shmem_transport_cma_peers = NULL;
-size_t shmem_transport_cma_put_max=8*1024;
-size_t shmem_transport_cma_get_max=16*1024;
 
 typedef struct pmi_shmem_data {
     pid_t           lpid;   /* OS specific */
@@ -41,7 +39,7 @@ typedef struct pmi_shmem_data {
 
 
 int
-shmem_transport_cma_init(long eager_size)
+shmem_transport_cma_init(void)
 {
     int ret;
     pmi_cma_data_t cma_data;
@@ -61,19 +59,10 @@ shmem_transport_cma_init(long eager_size)
 int
 shmem_transport_cma_startup(void)
 {
-    int i, ret, peer_num, num_on_node = 0;
+    int i, ret, peer_num, num_on_node;
     pmi_cma_data_t cma_data;
 
-    for (i = 0 ; i < shmem_internal_num_pes; ++i) {
-        if (-1 != SHMEM_GET_RANK_SAME_NODE(i)) {
-            num_on_node++;
-        }
-    }
-
-    if (num_on_node > 255) {
-        RETURN_ERROR_STR("Too many local ranks for CMA transport");
-        return 1;
-    }
+    num_on_node = shmem_runtime_get_node_size();
 
     /* allocate space for local peers */
     shmem_transport_cma_peers = calloc(num_on_node, sizeof(pid_t));
@@ -81,7 +70,7 @@ shmem_transport_cma_startup(void)
 
     /* get local peer pids */
     for (i = 0 ; i < shmem_internal_num_pes; ++i) {
-        peer_num = SHMEM_GET_RANK_SAME_NODE(i);
+        peer_num = shmem_runtime_get_node_rank(i);
         if (-1 == peer_num) continue;
 
         ret = shmem_runtime_get(i, "cma-procid", &cma_data,

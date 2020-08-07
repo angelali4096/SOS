@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -20,36 +20,43 @@
 #include "shmem_comm.h"
 #include "transport.h"
 
-
 static inline void
-shmem_internal_quiet(void)
+shmem_internal_quiet(shmem_ctx_t ctx)
 {
     int ret;
 
-    ret = shmem_transport_quiet();
+    if (ctx == SHMEMX_CTX_INVALID)
+        return;
+
+    ret = shmem_transport_quiet((shmem_transport_ctx_t *)ctx);
     if (0 != ret) { RAISE_ERROR(ret); }
 
-#ifdef USE_XPMEM
-    ret = shmem_transport_xpmem_quiet();
-    if (0 != ret) { RAISE_ERROR(ret); }
-#endif
+    shmem_internal_membar();
+
+    /* Transport level memory flush is required to make memory 
+     * changes (i.e. subsequent coherent load operations 
+     * performed via the shmem_ptr API, the result of atomics 
+     * that targeted the local process) visible */
+    shmem_transport_syncmem();
 }
 
 
 static inline void
-shmem_internal_fence(void)
+shmem_internal_fence(shmem_ctx_t ctx)
 {
     int ret;
 
-    ret = shmem_transport_fence();
+    if (ctx == SHMEMX_CTX_INVALID)
+        return;
+
+    ret = shmem_transport_fence((shmem_transport_ctx_t *)ctx);
     if (0 != ret) { RAISE_ERROR(ret); }
 
-#ifdef USE_XPMEM
-    ret = shmem_transport_xpmem_fence();
-    if (0 != ret) { RAISE_ERROR(ret); }
-#endif
+    shmem_internal_membar_release();
+
+    /* Since fence does not guarantee any memory visibility, 
+     * transport level memory flush is not required here. */
 }
-
 
 #define COMP(type, a, b, ret)                            \
     do {                                                 \
@@ -78,55 +85,83 @@ shmem_internal_fence(void)
         }                                                \
     } while(0)
 
+#ifdef USE_SHR_ATOMICS
+#define SYNC_LOAD(var) __atomic_load_n(var, __ATOMIC_ACQUIRE)
+#else
+#define SYNC_LOAD(var) *(var)
+#endif
 
-#if defined(ENABLE_HARD_POLLING)
+#define SHMEM_TEST(type, a, b, ret) COMP(type, SYNC_LOAD(a), b, ret)
 
-#define SHMEM_WAIT(var, value)                           \
+#define SHMEM_WAIT_POLL(var, value)                      \
     do {                                                 \
-        while (*(var) == value) { SPINLOCK_BODY(); }     \
+        while (SYNC_LOAD(var) == value) {                \
+            shmem_transport_probe();                     \
+            SPINLOCK_BODY(); }                           \
     } while(0)
 
-#define SHMEM_WAIT_UNTIL(var, cond, value)               \
+#define SHMEM_WAIT_UNTIL_POLL(var, cond, value)          \
     do {                                                 \
         int cmpret;                                      \
                                                          \
-        COMP(cond, *(var), value, cmpret);               \
+        COMP(cond, SYNC_LOAD(var), value, cmpret);       \
         while (!cmpret) {                                \
+            shmem_transport_probe();                     \
             SPINLOCK_BODY();                             \
-            COMP(cond, *(var), value, cmpret);           \
+            COMP(cond, SYNC_LOAD(var), value, cmpret);   \
         }                                                \
     } while(0)
 
-#else
-
-#define SHMEM_WAIT(var, value)                                          \
+#define SHMEM_WAIT_BLOCK(var, value)                                    \
     do {                                                                \
         uint64_t target_cntr;                                           \
                                                                         \
-        while (*(var) == value) {                                       \
+        while (SYNC_LOAD(var) == value) {                               \
             target_cntr = shmem_transport_received_cntr_get();          \
             COMPILER_FENCE();                                           \
-            if (*(var) != value) break;                                 \
+            if (SYNC_LOAD(var) != value) break;                         \
             shmem_transport_received_cntr_wait(target_cntr + 1);        \
         }                                                               \
     } while(0)
 
-#define SHMEM_WAIT_UNTIL(var, cond, value)                              \
+#define SHMEM_WAIT_UNTIL_BLOCK(var, cond, value)                        \
     do {                                                                \
         uint64_t target_cntr;                                           \
         int cmpret;                                                     \
                                                                         \
-        COMP(cond, *(var), value, cmpret);                              \
+        COMP(cond, SYNC_LOAD(var), value, cmpret);                      \
         while (!cmpret) {                                               \
             target_cntr = shmem_transport_received_cntr_get();          \
             COMPILER_FENCE();                                           \
-            COMP(cond, *(var), value, cmpret);                          \
+            COMP(cond, SYNC_LOAD(var), value, cmpret);                  \
             if (cmpret) break;                                          \
             shmem_transport_received_cntr_wait(target_cntr + 1);        \
-            COMP(cond, *(var), value, cmpret);                          \
+            COMP(cond, SYNC_LOAD(var), value, cmpret);                  \
         }                                                               \
     } while(0)
 
+#if defined(ENABLE_HARD_POLLING)
+#define SHMEM_INTERNAL_WAIT_UNTIL(var, cond, value)                     \
+    SHMEM_WAIT_UNTIL_POLL(var, cond, value)
+#else
+#define SHMEM_INTERNAL_WAIT_UNTIL(var, cond, value)                     \
+    if (shmem_internal_thread_level == SHMEM_THREAD_SINGLE) {           \
+        SHMEM_WAIT_UNTIL_BLOCK(var, cond, value);                       \
+    } else {                                                            \
+        SHMEM_WAIT_UNTIL_POLL(var, cond, value);                        \
+    }
 #endif
+
+#define SHMEM_WAIT(var, value) do {                                     \
+        SHMEM_INTERNAL_WAIT_UNTIL(var, SHMEM_CMP_NE, value);            \
+        shmem_internal_membar_acq_rel();                                \
+        shmem_transport_syncmem();                                      \
+    } while (0)
+
+#define SHMEM_WAIT_UNTIL(var, cond, value) do {                         \
+        SHMEM_INTERNAL_WAIT_UNTIL(var, cond, value);                    \
+        shmem_internal_membar_acq_rel();                                \
+        shmem_transport_syncmem();                                      \
+    } while (0)
 
 #endif

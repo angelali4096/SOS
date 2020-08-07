@@ -4,7 +4,7 @@
  * DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  * retains certain rights in this software.
  *
- * Copyright (c) 2016 Intel Corporation. All rights reserved.
+ * Copyright (c) 2017 Intel Corporation. All rights reserved.
  * This software is available to you under the BSD license.
  *
  * This file is part of the Sandia OpenSHMEM software package. For license
@@ -27,9 +27,60 @@
 
 #define SHMEM_INTERNAL_INCLUDE
 #include "shmem.h"
+#include "shmemx.h"
 #include "shmem_internal.h"
 #include "shmem_comm.h"
 #include "runtime.h"
+
+/* Temporarily redefine SHM_INTERNAL integer types to their Portals
+ * counterparts to translate the DTYPE_* types (defined by autoconf according
+ * to system ABI) into Portals types in the table below */
+#define SHM_INTERNAL_INT8   PTL_INT8_T
+#define SHM_INTERNAL_INT16  PTL_INT16_T
+#define SHM_INTERNAL_INT32  PTL_INT32_T
+#define SHM_INTERNAL_INT64  PTL_INT64_T
+#define SHM_INTERNAL_UINT8  PTL_UINT8_T
+#define SHM_INTERNAL_UINT16 PTL_UINT16_T
+#define SHM_INTERNAL_UINT32 PTL_UINT32_T
+#define SHM_INTERNAL_UINT64 PTL_UINT64_T
+
+int shmem_transport_dtype_table[] = {
+    PTL_INT8_T,               /* SHM_INTERNAL_SIGNED_BYTE    */
+    DTYPE_SHORT,              /* SHM_INTERNAL_SHORT          */
+    DTYPE_INT,                /* SHM_INTERNAL_INT            */
+    DTYPE_LONG,               /* SHM_INTERNAL_LONG           */
+    DTYPE_LONG_LONG,          /* SHM_INTERNAL_LONG_LONG      */
+    DTYPE_FORTRAN_INTEGER,    /* SHM_INTERNAL_FORTRAN_INT    */
+    PTL_INT8_T,               /* SHM_INTERNAL_INT8           */
+    PTL_INT16_T,              /* SHM_INTERNAL_INT16          */
+    PTL_INT32_T,              /* SHM_INTERNAL_INT32          */
+    PTL_INT64_T,              /* SHM_INTERNAL_INT64          */
+    DTYPE_PTRDIFF_T,          /* SHM_INTERNAL_PTRDIFF_T      */
+    DTYPE_UNSIGNED_CHAR,      /* SHM_INTERNAL_UCHAR          */
+    DTYPE_UNSIGNED_SHORT,     /* SHM_INTERNAL_USHORT         */
+    DTYPE_UNSIGNED_INT,       /* SHM_INTERNAL_UINT           */
+    DTYPE_UNSIGNED_LONG,      /* SHM_INTERNAL_ULONG          */
+    DTYPE_UNSIGNED_LONG_LONG, /* SHM_INTERNAL_ULONG_LONG     */
+    PTL_UINT8_T,              /* SHM_INTERNAL_UINT8          */
+    PTL_UINT16_T,             /* SHM_INTERNAL_UINT16         */
+    PTL_UINT32_T,             /* SHM_INTERNAL_UINT32         */
+    PTL_UINT64_T,             /* SHM_INTERNAL_UINT64         */
+    DTYPE_SIZE_T,             /* SHM_INTERNAL_SIZE_T         */
+    PTL_FLOAT,                /* SHM_INTERNAL_FLOAT          */
+    PTL_DOUBLE,               /* SHM_INTERNAL_DOUBLE         */
+    PTL_LONG_DOUBLE,          /* SHM_INTERNAL_LONG_DOUBLE    */
+    PTL_FLOAT_COMPLEX,        /* SHM_INTERNAL_FLOAT_COMPLEX  */
+    PTL_DOUBLE_COMPLEX        /* SHM_INTERNAL_DOUBLE_COMPLEX */
+};
+
+#undef SHM_INTERNAL_INT8
+#undef SHM_INTERNAL_INT16
+#undef SHM_INTERNAL_INT32
+#undef SHM_INTERNAL_INT64
+#undef SHM_INTERNAL_UINT8
+#undef SHM_INTERNAL_UINT16
+#undef SHM_INTERNAL_UINT32
+#undef SHM_INTERNAL_UINT64
 
 int8_t shmem_transport_portals4_pt_state[SHMEM_TRANSPORT_PORTALS4_NUM_PTS] = {
     /*  0 */ PT_FREE,
@@ -71,21 +122,21 @@ int8_t shmem_transport_portals4_pt_state[SHMEM_TRANSPORT_PORTALS4_NUM_PTS] = {
 };
 
 ptl_handle_ni_t shmem_transport_portals4_ni_h = PTL_INVALID_HANDLE;
-ptl_handle_md_t shmem_transport_portals4_put_volatile_md_h = PTL_INVALID_HANDLE;
-ptl_handle_md_t shmem_transport_portals4_put_cntr_md_h = PTL_INVALID_HANDLE;
 ptl_handle_md_t shmem_transport_portals4_put_event_md_h = PTL_INVALID_HANDLE;
-ptl_handle_md_t shmem_transport_portals4_get_md_h = PTL_INVALID_HANDLE;
+ptl_handle_ct_t shmem_transport_portals4_put_event_ct_h = PTL_INVALID_HANDLE;
+shmem_internal_cntr_t shmem_transport_portals4_pending_put_event_cntr;
 #if ENABLE_REMOTE_VIRTUAL_ADDRESSING
 ptl_handle_le_t shmem_transport_portals4_le_h = PTL_INVALID_HANDLE;
 #else
 ptl_handle_le_t shmem_transport_portals4_data_le_h = PTL_INVALID_HANDLE;
 ptl_handle_le_t shmem_transport_portals4_heap_le_h = PTL_INVALID_HANDLE;
 #endif
-#ifndef ENABLE_HARD_POLLING
+#ifndef DISABLE_HARD_POLLING_CNTR
+/* This is unused when hard polling is enabled; however, the Portals 4
+ * reference implementation still requires a valid counter handle even when no
+ * counting events are enabled on the LE. */
 ptl_handle_ct_t shmem_transport_portals4_target_ct_h = PTL_INVALID_HANDLE;
 #endif
-ptl_handle_ct_t shmem_transport_portals4_put_ct_h = PTL_INVALID_HANDLE;
-ptl_handle_ct_t shmem_transport_portals4_get_ct_h = PTL_INVALID_HANDLE;
 ptl_handle_eq_t shmem_transport_portals4_eq_h = PTL_INVALID_HANDLE;
 
 shmem_free_list_t *shmem_transport_portals4_bounce_buffers = NULL;
@@ -97,18 +148,11 @@ ptl_size_t shmem_transport_portals4_max_atomic_size = 0;
 ptl_size_t shmem_transport_portals4_max_fetch_atomic_size = 0;
 ptl_size_t shmem_transport_portals4_max_msg_size = 0;
 
-ptl_size_t shmem_transport_portals4_pending_put_counter = 0;
-ptl_size_t shmem_transport_portals4_pending_get_counter = 0;
-
 int32_t shmem_transport_portals4_event_slots = 2048;
 
 #if WANT_TOTAL_DATA_ORDERING != 0
 int shmem_transport_portals4_total_data_ordering = 0;
 int shmem_transport_portals4_long_pending = 0;
-#endif
-
-#ifdef ENABLE_NONBLOCKING_FENCE
-int shmem_transport_portals4_fence_pending = 0;
 #endif
 
 static ptl_ni_limits_t ni_limits;
@@ -120,11 +164,187 @@ static ptl_pt_index_t heap_pt = PTL_PT_ANY;
 #endif
 
 #ifdef ENABLE_THREADS
+shmem_internal_mutex_t shmem_internal_mutex_ptl4_ctx;
 shmem_internal_mutex_t shmem_internal_mutex_ptl4_pt_state;
 shmem_internal_mutex_t shmem_internal_mutex_ptl4_frag;
 shmem_internal_mutex_t shmem_internal_mutex_ptl4_event_slots;
-shmem_internal_mutex_t shmem_internal_mutex_ptl4_nb_fence;
 #endif
+
+static size_t shmem_transport_portals4_grow_size = 128;
+
+#define SHMEM_TRANSPORT_CTX_DEFAULT_ID -1
+shmem_transport_ctx_t shmem_transport_ctx_default;
+shmem_ctx_t SHMEM_CTX_DEFAULT = (shmem_ctx_t) &shmem_transport_ctx_default;
+
+static int
+shmem_transport_ctx_init(shmem_transport_ctx_t *ctx, long options, int id)
+{
+    int ret;
+    ptl_md_t md;
+
+    ctx->id = id;
+    ctx->options = options;
+    ctx->put_md = PTL_INVALID_HANDLE;
+    ctx->get_md = PTL_INVALID_HANDLE;
+    ctx->put_ct = PTL_INVALID_HANDLE;
+    ctx->get_ct = PTL_INVALID_HANDLE;
+    shmem_internal_cntr_write(&ctx->pending_put_cntr, 0);
+    shmem_internal_cntr_write(&ctx->pending_get_cntr, 0);
+
+    /* Allocate put completion tracking resources */
+    ret = PtlCTAlloc(shmem_transport_portals4_ni_h, &ctx->put_ct);
+    if (PTL_OK != ret) {
+        RAISE_WARN_MSG("Put CT allocation failed: %d\n", ret);
+        goto cleanup;
+    }
+
+    md.start = 0;
+    md.length = PTL_SIZE_MAX;
+    md.options = PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_SUCCESS_DISABLE;
+    if (1 != PORTALS4_TOTAL_DATA_ORDERING) {
+        md.options |= PTL_MD_UNORDERED;
+    }
+    md.eq_handle = shmem_transport_portals4_eq_h;
+    md.ct_handle = ctx->put_ct;
+    ret = PtlMDBind(shmem_transport_portals4_ni_h, &md, &ctx->put_md);
+    if (PTL_OK != ret) {
+        RETURN_ERROR_MSG("PtlMDBind of put MD failed: %d\n", ret);
+        goto cleanup;
+    }
+
+    /* Allocate put volatile resources */
+    md.start = 0;
+    md.length = PTL_SIZE_MAX;
+    md.options = PTL_MD_EVENT_CT_ACK |
+        PTL_MD_EVENT_SUCCESS_DISABLE |
+        PTL_MD_VOLATILE;
+    if (1 != PORTALS4_TOTAL_DATA_ORDERING) {
+        md.options |= PTL_MD_UNORDERED;
+    }
+    md.eq_handle = shmem_transport_portals4_eq_h;
+    md.ct_handle = ctx->put_ct;
+    ret = PtlMDBind(shmem_transport_portals4_ni_h, &md, &ctx->put_volatile_md);
+    if (PTL_OK != ret) {
+        RETURN_ERROR_MSG("PtlMDBind of volatile put MD failed: %d\n", ret);
+        goto cleanup;
+    }
+
+    /* Allocate get completion tracking resources */
+    ret = PtlCTAlloc(shmem_transport_portals4_ni_h, &ctx->get_ct);
+    if (PTL_OK != ret) {
+        RAISE_WARN_MSG("Get CT allocation failed: %d\n", ret);
+        goto cleanup;
+    }
+
+    md.start = 0;
+    md.length = PTL_SIZE_MAX;
+    md.options = PTL_MD_EVENT_CT_REPLY | PTL_MD_EVENT_SUCCESS_DISABLE;
+    if (1 != PORTALS4_TOTAL_DATA_ORDERING) {
+        md.options |= PTL_MD_UNORDERED;
+    }
+    md.eq_handle = shmem_transport_portals4_eq_h;
+    md.ct_handle = ctx->get_ct;
+    ret = PtlMDBind(shmem_transport_portals4_ni_h, &md, &ctx->get_md);
+    if (PTL_OK != ret) {
+        RETURN_ERROR_MSG("PtlMDBind of get MD failed: %d\n", ret);
+        goto cleanup;
+    }
+
+    return 0;
+
+cleanup:
+    if (!PtlHandleIsEqual(ctx->put_volatile_md, PTL_INVALID_HANDLE))
+        PtlMDRelease(ctx->put_volatile_md);
+    if (!PtlHandleIsEqual(ctx->put_md, PTL_INVALID_HANDLE))
+        PtlMDRelease(ctx->put_md);
+    if (!PtlHandleIsEqual(ctx->get_md, PTL_INVALID_HANDLE))
+        PtlMDRelease(ctx->get_md);
+    if (!PtlHandleIsEqual(ctx->put_ct, PTL_INVALID_HANDLE))
+        PtlCTFree(ctx->put_ct);
+    if (!PtlHandleIsEqual(ctx->get_ct, PTL_INVALID_HANDLE))
+        PtlCTFree(ctx->get_ct);
+
+    return 1;
+}
+
+int
+shmem_transport_ctx_create(struct shmem_internal_team_t *team, long options, shmem_transport_ctx_t **ctx)
+{
+    int ret;
+    size_t id;
+
+    if (team == NULL)
+        RAISE_ERROR_STR("Context creation occured on a NULL team");
+
+    SHMEM_MUTEX_LOCK(shmem_internal_mutex_ptl4_ctx);
+
+    /* Look for an open slot in the contexts array */
+    for (id = 0; id < team->contexts_len; id++)
+        if (team->contexts[id] == NULL) break;
+
+    /* If none found, grow the array */
+    if (id >= team->contexts_len) {
+        id = team->contexts_len;
+
+        size_t i = team->contexts_len;
+        team->contexts_len += shmem_transport_portals4_grow_size;
+        team->contexts = realloc(team->contexts, team->contexts_len * sizeof(shmem_transport_ctx_t*));
+
+        if (team->contexts == NULL) {
+            RAISE_ERROR_STR("Error: out of memory when allocating ctx array");
+        }
+
+        for ( ; i < team->contexts_len; i++)
+            team->contexts[i] = NULL;
+    }
+
+    *ctx = malloc(sizeof(shmem_transport_ctx_t));
+    if (*ctx == NULL) {
+        RAISE_WARN_STR("Out of memory allocating context");
+        return 1;
+    }
+
+    memset(*ctx, 0, sizeof(shmem_transport_ctx_t));
+
+    shmem_internal_cntr_write(&shmem_transport_portals4_pending_put_event_cntr, 0);
+    ret = shmem_transport_ctx_init(*ctx, options, id);
+
+    if (ret) {
+        free(*ctx);
+        *ctx = NULL;
+    } else {
+        team->contexts[id] = *ctx;
+    }
+
+    (*ctx)->team = team;
+
+    SHMEM_MUTEX_UNLOCK(shmem_internal_mutex_ptl4_ctx);
+
+    return ret;
+}
+
+void
+shmem_transport_ctx_destroy(shmem_transport_ctx_t *ctx)
+{
+    PtlMDRelease(ctx->put_volatile_md);
+    PtlMDRelease(ctx->put_md);
+    PtlMDRelease(ctx->get_md);
+    PtlCTFree(ctx->put_ct);
+    PtlCTFree(ctx->get_ct);
+
+    if (ctx->id >= 0) {
+        SHMEM_MUTEX_LOCK(shmem_internal_mutex_ptl4_ctx);
+        ctx->team->contexts[ctx->id] = NULL;
+        SHMEM_MUTEX_UNLOCK(shmem_internal_mutex_ptl4_ctx);
+        free(ctx);
+    }
+    else if (ctx->id != SHMEM_TRANSPORT_CTX_DEFAULT_ID) {
+        RAISE_ERROR_MSG("Attempted to destroy an invalid context (%d)\n",
+                        ctx->id);
+    }
+
+    return;
+}
 
 static
 void
@@ -149,23 +369,11 @@ init_long_frag(shmem_free_list_item_t *item)
 static void
 cleanup_handles(void)
 {
-    if (!PtlHandleIsEqual(shmem_transport_portals4_get_md_h, PTL_INVALID_HANDLE)) {
-        PtlMDRelease(shmem_transport_portals4_get_md_h);
-    }
     if (!PtlHandleIsEqual(shmem_transport_portals4_put_event_md_h, PTL_INVALID_HANDLE)) {
         PtlMDRelease(shmem_transport_portals4_put_event_md_h);
     }
-    if (!PtlHandleIsEqual(shmem_transport_portals4_put_volatile_md_h, PTL_INVALID_HANDLE)) {
-        PtlMDRelease(shmem_transport_portals4_put_volatile_md_h);
-    }
-    if (!PtlHandleIsEqual(shmem_transport_portals4_put_cntr_md_h, PTL_INVALID_HANDLE)) {
-        PtlMDRelease(shmem_transport_portals4_put_cntr_md_h);
-    }
-    if (!PtlHandleIsEqual(shmem_transport_portals4_get_ct_h, PTL_INVALID_HANDLE)) {
-        PtlCTFree(shmem_transport_portals4_get_ct_h);
-    }
-    if (!PtlHandleIsEqual(shmem_transport_portals4_put_ct_h, PTL_INVALID_HANDLE)) {
-        PtlCTFree(shmem_transport_portals4_put_ct_h);
+    if (!PtlHandleIsEqual(shmem_transport_portals4_put_event_ct_h, PTL_INVALID_HANDLE)) {
+        PtlCTFree(shmem_transport_portals4_put_event_ct_h);
     }
 #ifdef ENABLE_REMOTE_VIRTUAL_ADDRESSING
     if (!PtlHandleIsEqual(shmem_transport_portals4_le_h, PTL_INVALID_HANDLE)) {
@@ -179,7 +387,7 @@ cleanup_handles(void)
         PtlLEUnlink(shmem_transport_portals4_data_le_h);
     }
 #endif
-#ifndef ENABLE_HARD_POLLING
+#ifndef DISABLE_HARD_POLLING_CNTR
     if (!PtlHandleIsEqual(shmem_transport_portals4_target_ct_h, PTL_INVALID_HANDLE)) {
         PtlCTFree(shmem_transport_portals4_target_ct_h);
     }
@@ -212,7 +420,7 @@ cleanup_handles(void)
 
 
 int
-shmem_transport_init(long eager_size)
+shmem_transport_init(void)
 {
     ptl_process_t my_id;
     int ret;
@@ -226,14 +434,15 @@ shmem_transport_init(long eager_size)
     }
 
     /* Initialize Mutexes */
+    SHMEM_MUTEX_INIT(shmem_internal_mutex_ptl4_ctx);
     SHMEM_MUTEX_INIT(shmem_internal_mutex_ptl4_pt_state);
     SHMEM_MUTEX_INIT(shmem_internal_mutex_ptl4_frag);
     SHMEM_MUTEX_INIT(shmem_internal_mutex_ptl4_event_slots);
-    SHMEM_MUTEX_INIT(shmem_internal_mutex_ptl4_nb_fence);
 
-    shmem_transport_portals4_bounce_buffer_size = eager_size;
+    shmem_transport_portals4_bounce_buffer_size = shmem_internal_params.BOUNCE_SIZE;
     shmem_transport_portals4_bounce_buffers =
-        shmem_free_list_init(sizeof(shmem_transport_portals4_bounce_buffer_t) + eager_size,
+        shmem_free_list_init(sizeof(shmem_transport_portals4_bounce_buffer_t) +
+                             shmem_transport_portals4_bounce_buffer_size,
                              init_bounce_buffer);
 
     shmem_transport_portals4_long_frags =
@@ -339,14 +548,10 @@ int
 shmem_transport_startup(void)
 {
     int ret, i;
-    ptl_process_t *desired = NULL;
+    ptl_process_t *pe_map = NULL;
     ptl_md_t md;
     ptl_le_t le;
     ptl_uid_t uid = PTL_UID_ANY;
-    ptl_process_t my_id;
-#ifdef USE_ON_NODE_COMMS
-    int num_on_node = 0;
-#endif
 
 #ifdef ENABLE_REMOTE_VIRTUAL_ADDRESSING
     /* Make sure the heap and data bases are actually symmetric */
@@ -358,7 +563,7 @@ shmem_transport_startup(void)
 
         ret = shmem_runtime_get(peer, "portals4-bases", bases, sizeof(uint64_t) * 2);
         if (0 != ret) {
-            RETURN_ERROR_MSG("runtime_put failed: %d\n", ret);
+            RETURN_ERROR_MSG("runtime_get failed: %d\n", ret);
             return ret;
         }
 
@@ -379,41 +584,24 @@ shmem_transport_startup(void)
     }
 #endif
 
-    desired = malloc(sizeof(ptl_process_t) * shmem_internal_num_pes);
-    if (NULL == desired) {
+    pe_map = malloc(sizeof(ptl_process_t) * shmem_internal_num_pes);
+    if (NULL == pe_map) {
         ret = 1;
-        goto cleanup;
-    }
-
-    ret = PtlGetPhysId(shmem_transport_portals4_ni_h, &my_id);
-    if (PTL_OK != ret) {
-        RETURN_ERROR_MSG("PtlGetPhysId failed: %d\n", ret);
         goto cleanup;
     }
 
     for (i = 0 ; i < shmem_internal_num_pes; ++i) {
         ret = shmem_runtime_get(i, "portals4-procid",
-                                &desired[i], sizeof(ptl_process_t));
+                                &pe_map[i], sizeof(ptl_process_t));
         if (0 != ret) {
             RETURN_ERROR_MSG("runtime_get failed: %d\n", ret);
             goto cleanup;
         }
-
-#ifdef USE_ON_NODE_COMMS
-        /* update the connectivity map... */
-        if (desired[i].phys.nid == my_id.phys.nid) {
-            SHMEM_SET_RANK_SAME_NODE(i, num_on_node++);
-            if (num_on_node > 255) {
-                RETURN_ERROR_STR("Too many local ranks");
-                goto cleanup;
-            }
-        }
-#endif
     }
 
     ret = PtlSetMap(shmem_transport_portals4_ni_h,
                     shmem_internal_num_pes,
-                    desired);
+                    pe_map);
     if (PTL_OK != ret && PTL_IGNORED != ret) {
         RETURN_ERROR_MSG("PtlSetMap failed: %d\n", ret);
         goto cleanup;
@@ -430,17 +618,17 @@ shmem_transport_startup(void)
     shmem_transport_portals4_max_fetch_atomic_size = ni_limits.max_fetch_atomic_size;
     shmem_transport_portals4_max_msg_size = ni_limits.max_msg_size;
 
-    if (shmem_transport_portals4_max_volatile_size < sizeof(long double complex)) {
+    if (shmem_transport_portals4_max_volatile_size < sizeof(long double _Complex)) {
         RETURN_ERROR_MSG("Max volatile size found to be %lu, too small to continue\n",
                          (unsigned long) shmem_transport_portals4_max_volatile_size);
         goto cleanup;
     }
-    if (shmem_transport_portals4_max_atomic_size < sizeof(long double complex)) {
+    if (shmem_transport_portals4_max_atomic_size < sizeof(long double _Complex)) {
         RETURN_ERROR_MSG("Max atomic size found to be %lu, too small to continue\n",
                          (unsigned long) shmem_transport_portals4_max_atomic_size);
         goto cleanup;
     }
-    if (shmem_transport_portals4_max_fetch_atomic_size < sizeof(long double complex)) {
+    if (shmem_transport_portals4_max_fetch_atomic_size < sizeof(long double _Complex)) {
         RETURN_ERROR_MSG("Max fetch atomic size found to be %lu, too small to continue\n",
                          (unsigned long) shmem_transport_portals4_max_fetch_atomic_size);
         goto cleanup;
@@ -486,7 +674,7 @@ shmem_transport_startup(void)
     }
 #endif
 
-#ifndef ENABLE_HARD_POLLING
+#ifndef DISABLE_HARD_POLLING_CNTR
     /* target ct */
     ret = PtlCTAlloc(shmem_transport_portals4_ni_h, &shmem_transport_portals4_target_ct_h);
     if (PTL_OK != ret) {
@@ -495,6 +683,8 @@ shmem_transport_startup(void)
     }
 
     le.ct_handle = shmem_transport_portals4_target_ct_h;
+#else
+    le.ct_handle = PTL_INVALID_HANDLE;
 #endif
     le.uid = uid;
     le.options = PTL_LE_OP_PUT | PTL_LE_OP_GET |
@@ -547,131 +737,58 @@ shmem_transport_startup(void)
 #endif
 
     /* Open MD to all memory */
-    ret = PtlCTAlloc(shmem_transport_portals4_ni_h, &shmem_transport_portals4_put_ct_h);
+    ret = PtlCTAlloc(shmem_transport_portals4_ni_h,
+                     &shmem_transport_portals4_put_event_ct_h);
     if (PTL_OK != ret) {
-        RETURN_ERROR_MSG("PtlCTAlloc of put ct failed: %d\n", ret);
-        goto cleanup;
-    }
-    ret = PtlCTAlloc(shmem_transport_portals4_ni_h, &shmem_transport_portals4_get_ct_h);
-    if (PTL_OK != ret) {
-        RETURN_ERROR_MSG("PtlCTAlloc of get ct failed: %d\n", ret);
+        RAISE_ERROR_MSG("Put event CT allocation failed: %d\n", ret);
         goto cleanup;
     }
 
     md.start = 0;
     md.length = PTL_SIZE_MAX;
     md.options = PTL_MD_EVENT_CT_ACK;
-    if (1 == PORTALS4_TOTAL_DATA_ORDERING) {
+    if (1 != PORTALS4_TOTAL_DATA_ORDERING) {
         md.options |= PTL_MD_UNORDERED;
     }
     md.eq_handle = shmem_transport_portals4_eq_h;
-    md.ct_handle = shmem_transport_portals4_put_ct_h;
-    ret = PtlMDBind(shmem_transport_portals4_ni_h,
-                    &md,
+    md.ct_handle = shmem_transport_portals4_put_event_ct_h;
+    ret = PtlMDBind(shmem_transport_portals4_ni_h, &md,
                     &shmem_transport_portals4_put_event_md_h);
     if (PTL_OK != ret) {
-        RETURN_ERROR_MSG("PtlMDBind of put MD failed: %d\n", ret);
+        RETURN_ERROR_MSG("PtlMDBind of put event MD failed: %d\n", ret);
         goto cleanup;
     }
 
-    md.start = 0;
-    md.length = PTL_SIZE_MAX;
-    md.options = PTL_MD_EVENT_CT_ACK |
-        PTL_MD_EVENT_SUCCESS_DISABLE |
-        PTL_MD_VOLATILE;
-    if (1 == PORTALS4_TOTAL_DATA_ORDERING) {
-        md.options |= PTL_MD_UNORDERED;
-    }
-    md.eq_handle = shmem_transport_portals4_eq_h;
-    md.ct_handle = shmem_transport_portals4_put_ct_h;
-    ret = PtlMDBind(shmem_transport_portals4_ni_h,
-                    &md,
-                    &shmem_transport_portals4_put_volatile_md_h);
-    if (PTL_OK != ret) {
-        RETURN_ERROR_MSG("PtlMDBind of put MD failed: %d\n", ret);
-        goto cleanup;
-    }
+    ret = shmem_transport_ctx_init((shmem_transport_ctx_t*)SHMEM_CTX_DEFAULT,
+                                   SHMEMX_CTX_BOUNCE_BUFFER,
+                                   SHMEM_TRANSPORT_CTX_DEFAULT_ID);
 
-    md.start = 0;
-    md.length = PTL_SIZE_MAX;
-    md.options = PTL_MD_EVENT_CT_ACK |
-        PTL_MD_EVENT_SUCCESS_DISABLE;
-    if (1 == PORTALS4_TOTAL_DATA_ORDERING) {
-        md.options |= PTL_MD_UNORDERED;
-    }
-    md.eq_handle = shmem_transport_portals4_eq_h;
-    md.ct_handle = shmem_transport_portals4_put_ct_h;
-    ret = PtlMDBind(shmem_transport_portals4_ni_h,
-                    &md,
-                    &shmem_transport_portals4_put_cntr_md_h);
-    if (PTL_OK != ret) {
-        RETURN_ERROR_MSG("PtlMDBind of put cntr MD failed: %d\n", ret);
-        goto cleanup;
-    }
-
-    md.start = 0;
-    md.length = PTL_SIZE_MAX;
-    md.options = PTL_MD_EVENT_CT_REPLY |
-        PTL_MD_EVENT_SUCCESS_DISABLE;
-    if (1 == PORTALS4_TOTAL_DATA_ORDERING) {
-        md.options |= PTL_MD_UNORDERED;
-    }
-    md.eq_handle = shmem_transport_portals4_eq_h;
-    md.ct_handle = shmem_transport_portals4_get_ct_h;
-    ret = PtlMDBind(shmem_transport_portals4_ni_h,
-                    &md,
-                    &shmem_transport_portals4_get_md_h);
-    if (PTL_OK != ret) {
-        RETURN_ERROR_MSG("PtlMDBind of get MD failed: %d\n", ret);
-        goto cleanup;
-    }
-
-    ret = 0;
+    shmem_transport_ctx_default.team = &shmem_internal_team_world;
 
  cleanup:
-    if (NULL != desired) free(desired);
+    if (NULL != pe_map) free(pe_map);
     return ret;
-}
-
-
-void shmem_transport_print_info(void)
-{
-    printf("Network transport:      Portals\n");
 }
 
 
 int
 shmem_transport_fini(void)
 {
-    ptl_ct_event_t ct;
-
     /* synchronize the atomic cache, if there is one */
-    PtlAtomicSync();
+    shmem_transport_syncmem();
 
-    /* wait for remote completion (acks) of all pending events */
-    PtlCTWait(shmem_transport_portals4_put_ct_h,
-              shmem_transport_portals4_pending_put_counter, &ct);
-    if (shmem_transport_portals4_pending_put_counter != ct.success + ct.failure) {
-        RAISE_WARN_MSG("put count mismatch: %ld, %ld\n",
-                       (long) shmem_transport_portals4_pending_put_counter,
-                       (long) (ct.success + ct.failure));
-    }
-
-    PtlCTWait(shmem_transport_portals4_get_ct_h,
-              shmem_transport_portals4_pending_get_counter, &ct);
-    if (shmem_transport_portals4_pending_get_counter != ct.success + ct.failure) {
-        RAISE_WARN_MSG("get count mismatch: %ld, %ld\n",
-                       (long) shmem_transport_portals4_pending_get_counter,
-                       (long) (ct.success + ct.failure));
-    }
+    /* The default context is not inserted into the list of contexts on
+     * SHMEM_TEAM_WORLD, so it must be destroyed here */
+    shmem_transport_quiet(&shmem_transport_ctx_default);
+    shmem_transport_ctx_destroy(&shmem_transport_ctx_default);
 
     cleanup_handles();
     PtlFini();
 
+    SHMEM_MUTEX_DESTROY(shmem_internal_mutex_ptl4_ctx);
     SHMEM_MUTEX_DESTROY(shmem_internal_mutex_ptl4_pt_state);
     SHMEM_MUTEX_DESTROY(shmem_internal_mutex_ptl4_frag);
     SHMEM_MUTEX_DESTROY(shmem_internal_mutex_ptl4_event_slots);
-    SHMEM_MUTEX_DESTROY(shmem_internal_mutex_ptl4_nb_fence);
 
     return 0;
 }
